@@ -1,0 +1,16 @@
+# Pinned cross toolchain (ADR-0003). Owner: A02.
+# Tarballs verified on 2026-10-30 with gnu-keyring.gpg from https://ftp.gnu.org/gnu/:
+#   binutils-2.47.tar.xz.sig  Good signature, key 3A24BC1E8FB409FA9F14371813FCEF89DD9E3C4F (Nick Clifton)
+#   gcc-16.2.0.tar.xz.sig     Good signature, subkey 7F74F97C103468EE5D750B583AB00996FC26A641 (Richard Guenther)
+gnu_mirror=https://ftp.gnu.org/gnu
+binutils=2.47
+binutils_sha256=154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff
+gcc=16.2.0
+gcc_sha256=e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e
+# Host tools observed on Ubuntu 24.04.5 (WSL2), 2026-10-30
+nasm=2.16.01
+qemu=8.2.2
+grub=2.12-1ubuntu7.3
+xorriso=1.5.6
+clang=18.1.3
+mingw_gcc=13-win32

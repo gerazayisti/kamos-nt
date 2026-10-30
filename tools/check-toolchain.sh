@@ -11,6 +11,8 @@ missing=0
 
 check() {
     if command -v "$1" >/dev/null 2>&1; then
+        [ "$1" = grub-file ] && { printf "OK       %-28s %s
+" "$1" "(no --version)"; return; }
         printf 'OK       %-28s %s\n' "$1" "$("$1" --version 2>&1 | head -n1)"
     else
         printf 'MISSING  %s\n' "$1"
