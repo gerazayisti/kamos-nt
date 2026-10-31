@@ -28,6 +28,15 @@ _Noreturn void KeBugCheckEx(KAMOS_STOP_CODE Code, ULONG_PTR P1, ULONG_PTR P2,
 
 void DbgPrintAssertFailure(const char *Expr, const char *File, int Line);
 
+/*
+ * Checks by build profile (RFC-0002, defect D10). KAMOS_DEBUG is set by the build.
+ *  - ASSERT: a programmer-error check, active only in debug builds. In release builds the
+ *    expression is not evaluated (it is still type-checked).
+ *  - VERIFY: the expression is always evaluated, and checked in debug builds.
+ *  - A security or integrity invariant (a bounds check on user input, a handle generation) is
+ *    never an ASSERT: it calls KeBugCheckEx or returns an error explicitly, in every build.
+ */
+#if defined(KAMOS_DEBUG) && KAMOS_DEBUG
 #define ASSERT(e)                                                              \
     do {                                                                       \
         if (!(e)) {                                                            \
@@ -36,5 +45,10 @@ void DbgPrintAssertFailure(const char *Expr, const char *File, int Line);
                          0, 0);                                                \
         }                                                                      \
     } while (0)
+#define VERIFY(e) ASSERT(e)
+#else
+#define ASSERT(e) ((void)sizeof(e))
+#define VERIFY(e) ((void)(e))
+#endif
 
 #endif /* KAMOS_BUGCHECK_H */

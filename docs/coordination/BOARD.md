@@ -12,7 +12,7 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | P0-06 | `make iso` builds the placeholder ISO | A02 | Done with the cross toolchain, awaiting A10 replay | | evidence 2026-10-31 |
 | P0-07 | `make test` passes (QEMU exit 33) | A02, A10 | Done with the cross toolchain, awaiting A10 replay | | evidence 2026-10-31 |
 | P0-08 | Two builds give identical `kernel.elf` and ISO | A02 | Done (ISO dates pinned to SOURCE_DATE_EPOCH), awaiting A10 replay from a clean checkout | | evidence 2026-10-31 |
-| P0-09 | CI workflow (SPDX, toolchain cache, build and boot on qemu64 and max, reproducibility, broken-source self-test) | A02 | Implemented, scripts pass locally, **not run on GitHub** | Push needs the founder's go-ahead | evidence 2026-10-31 |
+| P0-09 | CI workflow | A02 | Ran on GitHub 2026-10-31 (run 41193587030): 5 jobs, 4 green. **`Reproducible build` red: `kamos.iso` differs between two builds on the runner** (`kernel.elf` identical). Diagnostics added, awaiting a second run | Second run | evidence 2026-10-31 |
 | P0-09b | Pin the actions to full commit SHAs after the first remote run | A02 | Planned | P0-09 remote run | |
 | P0-10 | ADR consistency review | A10 | Reviewed 2026-10-31, **not signed**: contradictions found (D01 to D05), all five now decided by A01 in RFC-0001 | A10 re-review of RFC-0001 by an independent session | `docs/reports/p0-A10.md` |
 | P0-11 | Threat model skeleton, provenance audit | A10 | Done (skeleton and SPDX audit); open items D07, D08 | | `docs/security/threat-model.md`, `docs/compatibility/provenance.md` |
@@ -32,13 +32,14 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | W1-03 | Methodology note, A04 | A04 | Assigned | | `docs/coordination/tasks/W1-A04.md` |
 | W1-04 | Methodology note, A10 | A10 | **Methodology accepted** with RFC-0002 decisions; contracts and harness before replay | | `docs/coordination/methodology/W1-A10-review.md` |
 | W1-05 | Independent re-review of RFC-0001 and replay of unverified evidence | A10 | Assigned | W1-04 accepted | |
-| W1-06 | Kernel build rules in the Makefile | A02 | Assigned | W1-02 accepted. Blocks A03's first build | |
+| W1-06 | Kernel build rules in the Makefile | A02 | Done, merged (`kbuild-selftest` 12/12 reviewed by A01); real-kernel use waits for A03's first source | | evidence 2026-10-31 (A02 rows) |
 | W1-07 | Host unit-test harness with ASan and UBSan | A10 | Assigned | W1-04 accepted. Blocks A04's tests | |
 | W1-08 | Oracles for the Phase 1 and 2 criteria (timer, exceptions, level masking) | A10 | Assigned | W1-04 accepted. Blocks A03's tests | |
 | W1-09 | Phase 1: boot, console, boot information | A03 | Assigned | W1-01 accepted, W1-06 | |
 | W1-10 | Phase 2: GDT, IDT, exceptions, PIC, PIT, software levels | A03 | Assigned | W1-09 | |
 | W1-11 | Host-side frame allocator, page tables, pool | A04 | Assigned | W1-03 accepted, W1-07 | |
-| W1-12 | Split the cache key: host tool versions out of `versions.txt` (C1). First A02 commit | A02 | Assigned | W1-02 | |
-| W1-13 | `ASSERT` per build profile (D10): debug-only `ASSERT`, `VERIFY`, security checks never removed | A01 (header), A02 (`KAMOS_DEBUG`) | Decided; header change due before A03's first C commit | | `docs/coordination/methodology/W1-A02-review.md` |
+| W1-12 | Split the cache key: host tool versions out of `versions.txt` (C1) | A02 | Done, merged. Note: `check-toolchain.sh` reads `gcc=` from `versions.txt`, which stays there | | `toolchain/host-tools.txt` |
+| W1-13 | `ASSERT` per build profile (D10): debug-only `ASSERT`, `VERIFY`, security checks never removed | A01 (header), A02 (`KAMOS_DEBUG` switch) | Header done 2026-10-31; `KAMOS_DEBUG` switch pending (A02, task R) | | `sdk/include/kamos/bugcheck.h` |
 | W1-14 | Exit-code table: harness distinguishes 33, 35, 37; `run-test.sh` wiring | A10 (parser), A02 (wiring) | Assigned | W1-04 | `docs/rfc/RFC-0002-wave1-test-contracts.md` |
 | D12 | Findings from the A10 methodology read: `ob.h` granted access, `boot.h` wording, lock-order wording, `irql.h` owner, wait timeout sign, ADR-0002 text | A01 | Fixed in RFC-0002, awaiting A10 re-review | | `docs/rfc/RFC-0002-wave1-test-contracts.md` |
+| D14 | ISO not reproducible on the GitHub runner (identical locally, 65 s apart and with another TZ). Cause unknown | A02 | Open, diagnostics merged | Needs the next remote run | run 41193587030 |
