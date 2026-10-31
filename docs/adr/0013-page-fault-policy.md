@@ -15,8 +15,8 @@ The `#PF` handler decodes the error code and CR2, then applies the first rule th
 
 1. **Registered fixup.** If the faulting instruction address is in the fault-fixup table (the user
    copy routines `MmCopyFromUser` and `MmCopyToUser`, and nothing else), execution resumes at the
-   fixup address and the copy returns `STATUS_ACCESS_VIOLATION`. Allowed at `PASSIVE_LEVEL` only.
-2. **Fault at `DEVICE_LEVEL` or above**, or any kernel-mode fault without a fixup: bug check
+   fixup address and the copy returns `STATUS_ACCESS_VIOLATION`. Allowed when the interrupted code ran at `PASSIVE_LEVEL` only. After a fixup, IF and the level are those from before the fault, also inside a `HalDisableInterrupts` section.
+2. **Fault taken by code that was running at `DEVICE_LEVEL` or above** (the level saved by the exception entry stub, not the level of the handler, which always runs at `DEVICE_LEVEL`), or any kernel-mode fault without a fixup: bug check
    `KAMOS_STOP_UNHANDLED_EXCEPTION` with the decoded fault (address, present, write, user,
    reserved bit, instruction fetch, RIP). There is no recovery and no demand paging in v0.1.
 3. **User-mode fault** (from Phase 6): the process is terminated with `STATUS_ACCESS_VIOLATION`;

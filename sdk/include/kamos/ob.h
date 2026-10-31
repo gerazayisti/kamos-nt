@@ -79,6 +79,7 @@ NTSTATUS ObReferenceObjectByHandle(HANDLE_TABLE *Table, HANDLE Handle,
                                    ACCESS_MASK DesiredAccess, OBJECT_TYPE *Type,
                                    void **Object);
 NTSTATUS ObCloseHandle(HANDLE_TABLE *Table, HANDLE Handle);
+/* DesiredAccess must be a subset of the access granted to SourceHandle: otherwise STATUS_ACCESS_DENIED. */
 NTSTATUS ObDuplicateHandle(HANDLE_TABLE *Source, HANDLE SourceHandle, HANDLE_TABLE *Target,
                            ACCESS_MASK DesiredAccess, HANDLE *TargetHandle);
 

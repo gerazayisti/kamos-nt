@@ -8,12 +8,14 @@
  * fixed-size storage below before any allocator exists. The loader's own memory is then free
  * to be reused. Nothing here is ever allocated dynamically.
  *
- * The memory map is reported as the loader gave it, normalised in two ways only: sorted by
- * Base, and zero-length entries dropped. Overlapping entries are not repaired (see below). The
- * kernel image, the boot modules, the boot information structure
- * and the first MiB are NOT removed from it: A04 reserves them when it builds the frame
- * database. A map that does not fit the limits below, overlaps, or lacks usable memory stops
- * the kernel with KAMOS_STOP_BAD_BOOT_INFORMATION; it is never silently truncated.
+ * The memory map is normalised by A03 in three ways: sorted by Base, zero-length entries
+ * dropped, and entries of the SAME type that overlap or touch merged into one. Entries of
+ * DIFFERENT types that overlap are not repaired. The kernel image, the boot modules, the boot
+ * information structure and the first MiB are NOT removed from it: A04 reserves them when it
+ * builds the frame database. A map that does not fit the limits below, has overlapping entries
+ * of different types, has a Base + Length that wraps past 2^64, or lacks usable memory stops the
+ * kernel with KAMOS_STOP_BAD_BOOT_INFORMATION; it is never silently truncated. A real PC whose
+ * map overlaps in this way does not boot: revisit at milestone M-HW.
  */
 #ifndef KAMOS_BOOT_H
 #define KAMOS_BOOT_H
