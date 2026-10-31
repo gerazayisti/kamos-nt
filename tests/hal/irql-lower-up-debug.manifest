@@ -1,0 +1,4 @@
+# ADR-0009 misuse in a debug build: ASSERT, bug check, exit 37.
+exit 37
+line ^ASSERT FAILED: NewIrql <= cur at hal/irql\.c:[0-9]+$
+line ^KAMOS STOP 0x00000001 ASSERTION_FAILED P1=0x[0-9a-f]+ P2=0x0 P3=0x0 P4=0x0$

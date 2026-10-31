@@ -1,0 +1,70 @@
+# Full suite of the A03 kernel (Phase 1 and 2). Written by hand, independent of the build.
+exit 33
+line ^Kamos-NT kernel 0\.1\.0 \((debug|release)\) x86_64$
+line ^TSC [0-9]+ Hz \(calibrated on interrupt-driven PIT ticks\)$
+forbid KAMOS STOP
+forbid ASSERT FAILED
+forbid panic
+
+require boot entry
+require boot cpu_state
+require boot bootinfo_shape
+require boot bootinfo_module
+require boot rtl_format
+require map text_rx
+require map rodata_r_nx
+require map data_rw_nx
+require map null_guard_absent
+require map image_alias_removed
+require map identity_nx
+
+# O5, O6: decoded exceptions. Expected rip, vector and error code are checked in the test against
+# the linker symbols and the SDM; the line shapes are checked here against the published format.
+require exc de
+require exc ud
+require exc bp_trap
+require exc gp_noncanonical
+require exc gp_selector
+require pf not_present_read
+require pf not_present_write
+require pf null_guard
+require pf nx_fetch
+require pf write_read_only
+line ^EXC v=0 err=none rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} irql=0 name=DE action=resume$
+line ^EXC v=6 err=none rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} irql=0 name=UD action=resume$
+line ^EXC v=13 err=0x0 rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} irql=0 name=GP action=resume$
+line ^EXC v=14 err=0x0 rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} cr2=0xffff900000000123 irql=0 name=PF action=resume$
+line ^EXC v=14 err=0x2 rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} cr2=0xffff900000000040 irql=0 name=PF action=resume$
+line ^EXC v=14 err=0x0 rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} cr2=0x0000000000000008 irql=0 name=PF action=resume$
+line ^EXC v=14 err=0x11 rip=0x([0-9a-f]{16}) cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} cr2=0x\1 irql=0 name=PF action=resume$
+line ^EXC v=14 err=0x3 rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} cr2=0x[0-9a-f]{16} irql=0 name=PF action=resume$
+line ^EXC-PF cr2=0xffff900000000040 present=0 write=1 user=0 rsvd=0 fetch=0$
+line ^EXC-PF cr2=0x[0-9a-f]{16} present=1 write=0 user=0 rsvd=0 fetch=1$
+
+# O7 a, R-a
+require pfpolicy fixup_resumes_state_intact
+require pfpolicy static_table_fixup
+require pfpolicy fixup_in_disabled_section
+require pfpolicy expect_at_device_level
+require pfpolicy handler_frame
+
+# PIC, O8, R-b
+require pic spurious7
+require pic spurious15
+require pic connect_errors
+require irql if_per_level
+require irql disabled_section
+require irql control_tick_at_passive
+require irql device_holds_tick
+require dispatch held_until_lowered
+require dispatch immediate_at_passive
+require dispatch held_at_device
+require dispatch depth_is_one
+require dispatch from_timer_tick
+
+# O4: the guest clock against the host clock over 10 s spent in HLT.
+require timer calibration
+require timer monotonic
+require timer start
+require timer end
+ratio timer start end t100ns 1e-7 0.99 1.01

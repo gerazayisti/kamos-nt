@@ -1,0 +1,7 @@
+# ADR-0013: a page fault the policy does not allow ends in a bug check, in every profile (exit 37).
+# Negative control of the fixup match: a fixup registered one byte off the faulting instruction
+# must not be used. Same stop as without any fixup.
+exit 37
+line ^EXC v=14 err=0x0 .* irql=0 name=PF action=stop$
+line ^KAMOS STOP 0x00000002 UNHANDLED_EXCEPTION P1=0xe
+forbid action=resume

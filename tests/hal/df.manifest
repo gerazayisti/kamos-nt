@@ -1,0 +1,5 @@
+# Double fault: delivered on IST1, never recovered. P4 of the bug check is the trap frame address.
+exit 37
+line ^EXC v=8 err=0x0 rip=0x[0-9a-f]{16} cs=0x8 .* name=DF action=stop$
+line ^KAMOS STOP 0x00000003 DOUBLE_FAULT P1=0x[0-9a-f]+ P2=0x[0-9a-f]+ P3=0x[0-9a-f]+ P4=0x[0-9a-f]+$
+forbid action=resume

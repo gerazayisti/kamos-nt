@@ -1,0 +1,7 @@
+# ADR-0013: a page fault the policy does not allow ends in a bug check, in every profile (exit 37).
+# Kernel-mode fault on a non-canonical-free unmapped address, no fixup registered.
+exit 37
+line ^EXC v=14 err=0x0 rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} cr2=0x[0-9a-f]{16} irql=0 name=PF action=stop$
+line ^EXC-PF cr2=0x[0-9a-f]{16} present=0 write=0 user=0 rsvd=0 fetch=0$
+line ^KAMOS STOP 0x00000002 UNHANDLED_EXCEPTION P1=0xe P2=0x[0-9a-f]+ P3=0x0 P4=0x[0-9a-f]+$
+forbid action=resume

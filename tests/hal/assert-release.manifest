@@ -1,0 +1,6 @@
+# Scenario "assert" in a release build: ASSERT is removed (bugcheck.h), the boot goes on, exit 33.
+# This is the negative control of the debug manifest: the same source gives 33 here and 37 there.
+exit 33
+require scenario fell_through
+forbid ASSERT FAILED
+forbid KAMOS STOP
