@@ -19,18 +19,6 @@ void *memset(void *Dest, int Value, size_t Count);
 #define MI_POOL_LARGE       0xFFu
 #define MI_POOL_MAX_LARGE   (UINT64_C(1) << 40)
 
-/* Reasons in parameter 1 of KAMOS_STOP_POOL_CORRUPTION. */
-enum {
-    MiPoolBadPointer = 1,
-    MiPoolDoubleFree,
-    MiPoolBadHeader,
-    MiPoolWrongTag,
-    MiPoolOverrun,
-    MiPoolWriteAfterFree,
-    MiPoolAccounting,
-    MiPoolLiveAtRelease,
-};
-
 typedef struct _POOL_HEADER {
     ULONG64 Magic; /* Magic ^ address of the header. */
     ULONG   Tag;
@@ -135,7 +123,7 @@ static void MiCheckFillFree(const MM_POOL *P, POOL_HEADER *H)
     ULONG        cap     = MiPayloadCapacity(H->Class);
     for (ULONG i = sizeof(void *); i < cap; i++)
         if (payload[i] != MI_POOL_FILL_FREE)
-            POOL_STOP(MiPoolWriteAfterFree, payload, H->Tag, i);
+            POOL_STOP(MM_POOL_STOP_WRITE_AFTER_FREE, payload, H->Tag, i);
 }
 
 /* Cuts a fresh page into blocks of one class and pushes them on the free list. Lock held. */
@@ -202,7 +190,7 @@ void *MiPoolAllocate(MM_POOL *Pool, POOL_TYPE Type, SIZE_T Size, ULONG Tag)
         }
         POOL_HEADER *check = h;
         if (h->Magic != MiMagic(MI_POOL_MAGIC_FREE, h) || h->Class != cls || h->Type != Type)
-            POOL_STOP(MiPoolBadHeader, h, Tag, 0);
+            POOL_STOP(MM_POOL_STOP_BAD_HEADER, h, Tag, 0);
         Pool->FreeList[Type][cls] = *(void **)(void *)MiPayload(h);
         h->Magic                  = MiMagic(MI_POOL_MAGIC_ALLOC, h);
         h->Tag                    = Tag;
@@ -247,29 +235,29 @@ void MiPoolFree(MM_POOL *Pool, void *Block, ULONG Tag)
     if (Block == NULL)
         return;
     if (((ULONG_PTR)Block & (MM_POOL_ALIGNMENT - 1u)) != 0)
-        POOL_STOP(MiPoolBadPointer, Block, Tag, 0);
+        POOL_STOP(MM_POOL_STOP_BAD_POINTER, Block, Tag, 0);
     POOL_HEADER *h = (POOL_HEADER *)(void *)((UCHAR *)Block - MM_POOL_HEADER_SIZE);
     if (h->Magic == MiMagic(MI_POOL_MAGIC_FREE, h))
-        POOL_STOP(MiPoolDoubleFree, Block, Tag, h->Tag);
+        POOL_STOP(MM_POOL_STOP_DOUBLE_FREE, Block, Tag, h->Tag);
     if (h->Magic != MiMagic(MI_POOL_MAGIC_ALLOC, h))
-        POOL_STOP(MiPoolBadHeader, Block, Tag, 0);
+        POOL_STOP(MM_POOL_STOP_BAD_HEADER, Block, Tag, 0);
     if (h->Tag != Tag)
-        POOL_STOP(MiPoolWrongTag, Block, Tag, h->Tag);
+        POOL_STOP(MM_POOL_STOP_WRONG_TAG, Block, Tag, h->Tag);
     if (h->Type > (UCHAR)PagedPool ||
         (h->Class >= MM_POOL_CLASS_COUNT && h->Class != MI_POOL_LARGE))
-        POOL_STOP(MiPoolBadHeader, Block, Tag, 1);
+        POOL_STOP(MM_POOL_STOP_BAD_HEADER, Block, Tag, 1);
 
     ULONG64 size = h->Size;
     ULONG64 cap  = (h->Class == MI_POOL_LARGE) ? h->Pages * PAGE_SIZE - MM_POOL_HEADER_SIZE
                                                : MiPayloadCapacity(h->Class);
     if (size == 0 || size + MM_POOL_TRAILER > cap)
-        POOL_STOP(MiPoolBadHeader, Block, Tag, 2);
+        POOL_STOP(MM_POOL_STOP_BAD_HEADER, Block, Tag, 2);
     if (Pool->Debug) {
         const UCHAR *payload = Block;
         ULONG64      canary  = MiCanary(payload);
         for (unsigned i = 0; i < MM_POOL_TRAILER; i++)
             if (payload[size + i] != (UCHAR)(canary >> (8u * i)))
-                POOL_STOP(MiPoolOverrun, Block, Tag, size);
+                POOL_STOP(MM_POOL_STOP_OVERRUN, Block, Tag, size);
     }
 
     UCHAR   type  = h->Type;
@@ -283,7 +271,7 @@ void MiPoolFree(MM_POOL *Pool, void *Block, ULONG Tag)
     MM_POOL_TAG_INFO *t = MiTagSlot(Pool, Tag, false);
     if (t == NULL || t->BytesInUse < size || Pool->Live == 0) {
         MiUnlock(Pool);
-        POOL_STOP(MiPoolAccounting, Block, Tag, size);
+        POOL_STOP(MM_POOL_STOP_ACCOUNTING, Block, Tag, size);
         return;
     }
     t->Frees++;
@@ -327,7 +315,7 @@ BOOLEAN MiPoolFindTag(const MM_POOL *Pool, ULONG Tag, MM_POOL_TAG_INFO *Info)
 void MiPoolReleaseAll(MM_POOL *Pool)
 {
     if (Pool->Live != 0)
-        POOL_STOP(MiPoolLiveAtRelease, Pool->Live, 0, 0);
+        POOL_STOP(MM_POOL_STOP_LIVE_AT_RELEASE, Pool->Live, 0, 0);
     POOL_SLAB *s = Pool->Slabs;
     while (s != NULL) {
         POOL_SLAB *next = s->Next;

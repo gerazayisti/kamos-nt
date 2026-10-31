@@ -29,7 +29,7 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | P0-12 | Phase 0 gate file | A01 | Written 2026-10-31: approved with reservations R1 to R5, **A10 has not signed** | A10 signature (re-review W1-05) | `docs/reports/gate-phase0.md` |
 | W1-01 | Methodology note, A03 | A03 | Assigned | | `docs/coordination/tasks/W1-A03.md` |
 | W1-02 | Methodology note, A02 | A02 | **Methodology accepted** with conditions C1 to C3 | | `docs/coordination/methodology/W1-A02-review.md` |
-| W1-03 | Methodology note, A04 | A04 | Assigned | | `docs/coordination/tasks/W1-A04.md` |
+| W1-03 | Methodology note, A04 | A04 | Written (36ef029), not yet accepted by A01 | | `docs/coordination/tasks/W1-A04.md` |
 | W1-04 | Methodology note, A10 | A10 | **Methodology accepted** with RFC-0002 decisions; contracts and harness before replay | | `docs/coordination/methodology/W1-A10-review.md` |
 | W1-05 | Independent re-review of RFC-0001 and RFC-0002 and replay of unverified evidence | A10 | Done 2026-10-31 (signed with reservations R-a to R-c, defects D13 to D17). Replay of 13 rows done, see evidence | | `docs/reports/p0-A10-rereview.md`, `docs/testing/evidence.md` |
 | W1-06 | Kernel build rules in the Makefile | A02 | Done, merged (`kbuild-selftest` 12/12 reviewed by A01); real-kernel use waits for A03's first source | | evidence 2026-10-31 (A02 rows) |
@@ -37,7 +37,7 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | W1-08 | Oracles for the Phase 1 and 2 criteria (timer, exceptions, level masking) | A10 | Done (document): `docs/testing/oracles-wave1.md`; timer method noise measured | | `docs/testing/oracles-wave1.md` |
 | W1-09 | Phase 1: boot, console, boot information | A03 | Assigned | W1-01 accepted, W1-06 | |
 | W1-10 | Phase 2: GDT, IDT, exceptions, PIC, PIT, software levels | A03 | Assigned | W1-09 | |
-| W1-11 | Host-side frame allocator, page tables, pool | A04 | Assigned | W1-03 accepted, W1-07 | |
+| W1-11 | Host-side frame allocator, page tables, pool | A04 | Done on host (`Tested (host)`), awaiting A01 review; code was written before A01 accepted the note (W1-03), see its section 8 | W1-03 accepted, W1-07 | `docs/architecture/memory.md`, `docs/status/mm.md`, `docs/reports/p3-host-A04.md`, evidence 2026-10-31 (A04 rows) |
 | W1-12 | Split the cache key: host tool versions out of `versions.txt` (C1) | A02 | Done, merged. Note: `check-toolchain.sh` reads `gcc=` from `versions.txt`, which stays there | | `toolchain/host-tools.txt` |
 | W1-13 | `ASSERT` per build profile (D10): debug-only `ASSERT`, `VERIFY`, security checks never removed | A01 (header), A02 (`KAMOS_DEBUG` switch) | Header done 2026-10-31; `KAMOS_DEBUG` switch pending (A02, task R) | | `sdk/include/kamos/bugcheck.h` |
 | W1-14 | Exit-code table: harness distinguishes 33, 35, 37; `run-test.sh` wiring | A10 (parser), A02 (wiring) | Parser done (`tests/framework/ktest-run.py`); wiring waits for A02 (inbox A02) | W1-04 | `docs/rfc/RFC-0002-wave1-test-contracts.md` |

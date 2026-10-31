@@ -87,6 +87,7 @@ static void HostAcquire(void *Context, ULONG Rank, const void *Lock)
     g_locks.obj[g_locks.depth]  = Lock;
     g_locks.depth++;
     g_locks.acquired[Rank]++;
+    g_locks.last[Rank] = Lock;
     g_locks.total++;
 }
 
@@ -470,9 +471,13 @@ static void HostTableFree(void *Context, PHYSICAL_ADDRESS Physical)
     (void)MiDereferenceFrame(&m->db, Physical, MmFramePageTable);
 }
 
+unsigned g_providerLockDepth; /* highest lock depth seen at a call of the page provider */
+
 static NTSTATUS HostGetPages(void *Context, SIZE_T Count, void **Virtual)
 {
     (void)Context;
+    if (g_locks.depth > g_providerLockDepth)
+        g_providerLockDepth = g_locks.depth;
     if (g_poolFailAfter == 0)
         return STATUS_NO_MEMORY;
     if (g_poolFailAfter > 0)
@@ -489,6 +494,8 @@ static NTSTATUS HostGetPages(void *Context, SIZE_T Count, void **Virtual)
 static void HostPutPages(void *Context, void *Virtual, SIZE_T Count)
 {
     (void)Context;
+    if (g_locks.depth > g_providerLockDepth)
+        g_providerLockDepth = g_locks.depth;
     g_poolPages -= (long)Count;
     if (g_poolQuarantine) {
         Quarantined *q = malloc(sizeof *q);
@@ -504,11 +511,12 @@ static void HostPutPages(void *Context, void *Virtual, SIZE_T Count)
 
 void HostInitMm(HostMachine *m, int debugPool)
 {
-    g_tableFailAfter = -1;
-    g_tableAllocs    = 0;
-    g_poolFailAfter  = -1;
-    g_poolPages      = 0;
-    g_poolQuarantine = 0;
+    g_tableFailAfter    = -1;
+    g_tableAllocs       = 0;
+    g_poolFailAfter     = -1;
+    g_poolPages         = 0;
+    g_poolQuarantine    = 0;
+    g_providerLockDepth = 0;
     HostStopClear();
     HostInitFrames(m);
     MiContextInit(&m->mm, &g_hw, &m->db, 40);
@@ -533,4 +541,32 @@ void HostTeardown(HostMachine *m)
         free(q);
     }
     SimReset();
+}
+
+void HostSnapTake(const MM_FRAME_DB *db, HostSnap *s)
+{
+    s->frames = db->FrameCount;
+    s->words  = db->BitmapWords;
+    s->pfn    = malloc(db->FrameCount * sizeof(MM_PFN));
+    s->bm     = malloc(db->BitmapWords * 8);
+    if (s->pfn == NULL || s->bm == NULL)
+        abort();
+    memcpy(s->pfn, db->Pfn, db->FrameCount * sizeof(MM_PFN));
+    memcpy(s->bm, db->Bitmap, db->BitmapWords * 8);
+    memcpy(s->counts, db->StateCount, sizeof s->counts);
+}
+
+int HostSnapSame(const MM_FRAME_DB *db, const HostSnap *s)
+{
+    return memcmp(s->pfn, db->Pfn, s->frames * sizeof(MM_PFN)) == 0 &&
+           memcmp(s->bm, db->Bitmap, s->words * 8) == 0 &&
+           memcmp(s->counts, db->StateCount, sizeof s->counts) == 0;
+}
+
+void HostSnapFree(HostSnap *s)
+{
+    free(s->pfn);
+    free(s->bm);
+    s->pfn = NULL;
+    s->bm  = NULL;
 }

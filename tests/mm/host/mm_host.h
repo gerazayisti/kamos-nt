@@ -57,6 +57,7 @@ typedef struct HostLocks {
     unsigned    violations;
     unsigned    acquired[128]; /* per rank */
     unsigned    total;
+    const void *last[128]; /* last object acquired at each rank */
 } HostLocks;
 extern HostLocks g_locks;
 void             HostLocksReset(void);
@@ -92,10 +93,11 @@ void HostInitMm(HostMachine *m, int debugPool);
 void HostTeardown(HostMachine *m);
 
 /* Fault injection: number of allocations that still succeed, -1 = never fail. */
-extern long     g_tableFailAfter; /* page-table frames */
-extern unsigned g_tableAllocs;    /* attempts since HostInitMm */
-extern long     g_poolFailAfter;  /* pages from the pool's provider */
-extern long     g_poolPages;      /* provider pages outstanding */
+extern long     g_tableFailAfter;    /* page-table frames */
+extern unsigned g_tableAllocs;       /* attempts since HostInitMm */
+extern long     g_poolFailAfter;     /* pages from the pool's provider */
+extern long     g_poolPages;         /* provider pages outstanding */
+extern unsigned g_providerLockDepth; /* max locks held when the pool called its provider */
 extern int
     g_poolQuarantine; /* keep freed provider pages mapped (to test double free of large blocks) */
 
@@ -119,6 +121,17 @@ HostExpect HostClassify(const HostMachine *m, ULONG64 pfn);
 
 /* Compares every frame with the classification. Returns the number of differences. */
 ULONG64 HostCheckFrames(const HostMachine *m);
+
+/* Copy of the frame database, to prove that a failed operation changed nothing. */
+typedef struct HostSnap {
+    MM_PFN  *pfn;
+    ULONG64 *bm;
+    ULONG64  counts[MmFrameStateCount];
+    ULONG64  frames, words;
+} HostSnap;
+void HostSnapTake(const MM_FRAME_DB *db, HostSnap *s);
+int  HostSnapSame(const MM_FRAME_DB *db, const HostSnap *s);
+void HostSnapFree(HostSnap *s);
 
 /* xorshift64* generator, seed printed on failure by the caller. */
 typedef struct HostRng {

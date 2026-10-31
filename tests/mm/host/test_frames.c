@@ -347,37 +347,6 @@ static void test_zeroing(void)
     HostTeardown(&M);
 }
 
-typedef struct Snap {
-    MM_PFN  *pfn;
-    ULONG64 *bm;
-    ULONG64  counts[MmFrameStateCount];
-    ULONG64  frames, words;
-} Snap;
-
-static void snap_take(const MM_FRAME_DB *db, Snap *s)
-{
-    s->frames = db->FrameCount;
-    s->words  = db->BitmapWords;
-    s->pfn    = malloc(db->FrameCount * sizeof(MM_PFN));
-    s->bm     = malloc(db->BitmapWords * 8);
-    memcpy(s->pfn, db->Pfn, db->FrameCount * sizeof(MM_PFN));
-    memcpy(s->bm, db->Bitmap, db->BitmapWords * 8);
-    memcpy(s->counts, db->StateCount, sizeof s->counts);
-}
-
-static int snap_same(const MM_FRAME_DB *db, const Snap *s)
-{
-    return memcmp(s->pfn, db->Pfn, s->frames * sizeof(MM_PFN)) == 0 &&
-           memcmp(s->bm, db->Bitmap, s->words * 8) == 0 &&
-           memcmp(s->counts, db->StateCount, sizeof s->counts) == 0;
-}
-
-static void snap_free(Snap *s)
-{
-    free(s->pfn);
-    free(s->bm);
-}
-
 static void test_invalid_frame_operations_stop(void)
 {
     HostMachineStandard(&M);
@@ -390,24 +359,24 @@ static void test_invalid_frame_operations_stop(void)
     KT_REQUIRE_EQ(MiDereferenceFrame(&M.db, freed, MmFrameActive), 0);
     PHYSICAL_ADDRESS beyond = M.db.FrameCount << PAGE_SHIFT;
 
-    Snap before;
-    snap_take(&M.db, &before);
+    HostSnap before;
+    HostSnapTake(&M.db, &before);
     int stopped;
 
 #define STOPS(label, reason, stmt)                                                                 \
     do {                                                                                           \
         HOST_CATCH(stopped, stmt);                                                                 \
         if (!stopped) {                                                                            \
-            snap_free(&before);                                                                    \
+            HostSnapFree(&before);                                                                 \
             FAILF("%s: did not stop", label);                                                      \
         }                                                                                          \
         if (g_stop.p[0] != (MM_STOP_BASE | (reason))) {                                            \
-            snap_free(&before);                                                                    \
+            HostSnapFree(&before);                                                                 \
             FAILF("%s: reason %#lx, expected %#x", label, (unsigned long)g_stop.p[0],              \
                   (unsigned)(MM_STOP_BASE | (reason)));                                            \
         }                                                                                          \
-        if (g_stop.lockDepthAtStop != 0 || !snap_same(&M.db, &before)) {                           \
-            snap_free(&before);                                                                    \
+        if (g_stop.lockDepthAtStop != 0 || !HostSnapSame(&M.db, &before)) {                        \
+            HostSnapFree(&before);                                                                 \
             FAILF("%s: lock held at the stop or the database changed", label);                     \
         }                                                                                          \
     } while (0)
@@ -437,12 +406,12 @@ static void test_invalid_frame_operations_stop(void)
 
     /* Reference count overflow: poke the count to its maximum, as a corrupt database would. */
     M.db.Pfn[a >> PAGE_SHIFT].RefCount = 0xFFFFFFFFu;
-    snap_free(&before);
-    snap_take(&M.db, &before);
+    HostSnapFree(&before);
+    HostSnapTake(&M.db, &before);
     STOPS("reference overflow", MM_STOP_FRAME_REFCOUNT, MiReferenceFrame(&M.db, a));
     M.db.Pfn[a >> PAGE_SHIFT].RefCount = 1;
 #undef STOPS
-    snap_free(&before);
+    HostSnapFree(&before);
 
     /* After all that the database is still consistent and the good frames still free correctly. */
     KT_CHECK_EQ(MiFrameDbVerify(&M.db), 0);

@@ -67,6 +67,18 @@ BOOLEAN MiPoolFindTag(const MM_POOL *Pool, ULONG Tag, MM_POOL_TAG_INFO *Info);
 /* Gives the slab pages back to the provider. Stops if allocations are still live. */
 void MiPoolReleaseAll(MM_POOL *Pool);
 
+/* Reasons in parameter 1 of KAMOS_STOP_POOL_CORRUPTION. */
+enum {
+    MM_POOL_STOP_BAD_POINTER = 1,
+    MM_POOL_STOP_DOUBLE_FREE,
+    MM_POOL_STOP_BAD_HEADER,
+    MM_POOL_STOP_WRONG_TAG,
+    MM_POOL_STOP_OVERRUN,
+    MM_POOL_STOP_WRITE_AFTER_FREE,
+    MM_POOL_STOP_ACCOUNTING,
+    MM_POOL_STOP_LIVE_AT_RELEASE,
+};
+
 /* Largest payload served from a size class. */
 #define MM_POOL_SMALL_MAX (1024u - MM_POOL_HEADER_SIZE - MM_POOL_TRAILER)
 
