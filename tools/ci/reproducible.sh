@@ -33,6 +33,14 @@ for f in kernel.elf kamos.iso; do
         echo "identical: $f $(sha256sum "$a/$bdir/$f" | cut -c1-16)"
     else
         echo "FAIL: $f differs between the two builds"; status=1
+        # Diagnostics, so that a remote failure can be explained from the log alone.
+        echo "  sha256 first : $(sha256sum "$a/$bdir/$f" | cut -c1-32)"
+        echo "  sha256 second: $(sha256sum "$b/$bdir/$f" | cut -c1-32)"
+        echo "  differing bytes: $(cmp -l "$a/$bdir/$f" "$b/$bdir/$f" | wc -l)"
+        echo "  first offsets (decimal, 1-based, octal values):"
+        cmp -l "$a/$bdir/$f" "$b/$bdir/$f" | head -40 | sed 's/^/    /' || true
+        echo "  GRUB platforms: $(ls /usr/lib/grub 2>/dev/null | tr '\n' ' ')"
+        echo "  $(xorriso -version 2>&1 | head -1)"
     fi
 done
 # No build path may leak into the kernel. The strings go through a variable: with pipefail,
