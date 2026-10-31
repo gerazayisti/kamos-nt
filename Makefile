@@ -9,7 +9,26 @@ SHELL       := /bin/bash
 .DEFAULT_GOAL := all
 
 SRCDIR    := $(abspath .)
-BUILD     := build
+
+# Build profile. KAMOS_DEBUG=1 is the debug profile (ASSERT and VERIFY active, -Og -g3) and
+# KAMOS_DEBUG=0 the release profile (ASSERT removed, -O2 -g); see sdk/include/kamos/bugcheck.h.
+# Without KAMOS_DEBUG the debug flags are used and the output stays in build/. With it, the
+# output goes to build/debug or build/release (unless BUILD is given), so both can coexist.
+ifeq ($(origin KAMOS_DEBUG),undefined)
+KDEBUG  := 1
+KOPT_DEFAULT := -Og -g3
+BUILD   ?= build
+else ifeq ($(KAMOS_DEBUG),1)
+KDEBUG  := 1
+KOPT_DEFAULT := -Og -g3
+BUILD   ?= build/debug
+else ifeq ($(KAMOS_DEBUG),0)
+KDEBUG  := 0
+KOPT_DEFAULT := -O2 -g
+BUILD   ?= build/release
+else
+$(error KAMOS_DEBUG must be 0 or 1, not '$(KAMOS_DEBUG)')
+endif
 CROSS     ?= $(HOME)/opt/cross/bin/x86_64-elf-
 CC        := $(CROSS)gcc
 LD        := $(CROSS)ld
@@ -36,7 +55,8 @@ CROSS_ROOT := $(abspath $(dir $(shell command -v $(CC) 2>/dev/null))/..)
 KPREFIXMAP := -ffile-prefix-map=$(CROSS_ROOT)=/cross
 KCFLAGS := -std=c11 -ffreestanding -fno-pic -fno-pie -fno-stack-protector \
            -mno-red-zone -mcmodel=kernel -mgeneral-regs-only -fno-omit-frame-pointer \
-           -Wall -Wextra -Werror -Wdate-time -ffile-prefix-map=$(SRCDIR)=. $(KPREFIXMAP) -Isdk/include
+           -Wall -Wextra -Werror -Wdate-time -ffile-prefix-map=$(SRCDIR)=. $(KPREFIXMAP) -Isdk/include \
+           -DKAMOS_DEBUG=$(KDEBUG)
 
 KERNEL := $(BUILD)/kernel.elf
 ISO    := $(BUILD)/kamos.iso
@@ -47,7 +67,7 @@ INITRD := $(BUILD)/initrd.tar
 KSRC_DIRS ?= boot arch/x86_64 hal ntoskrnl
 KSRC_C    := $(sort $(shell find $(KSRC_DIRS) -name '*.c' 2>/dev/null))
 KSRC_ASM  := $(sort $(shell find $(KSRC_DIRS) -name '*.asm' 2>/dev/null))
-KOPT      ?= -O2 -g
+KOPT      ?= $(KOPT_DEFAULT)
 # NASM has no prefix map: its DWARF names the absolute build directory, which breaks
 # reproducibility. Assembly gets symbols only. For line-level debugging of assembly in a private
 # build, pass KASMFLAGS="-g -F dwarf" (the image is then path dependent).
@@ -80,7 +100,7 @@ endif
 
 QEMU_BASE := $(QEMU) -machine q35 -cpu $(QEMU_CPU) -m $(QEMU_MEM) -cdrom $(ISO) -no-reboot
 
-.PHONY: all toolchain-check headers-check iso run run-serial debug test clean package
+.PHONY: FORCE all toolchain-check headers-check iso run run-serial debug test clean package
 
 all: $(KERNEL) headers-check
 
@@ -100,11 +120,19 @@ $(BUILD):
 $(BUILD)/entry.o: $(KERNEL_ASM) | $(BUILD)
 	$(NASM) -f elf64 -o $@ $<
 
-$(BUILD)/obj/%.c.o: %.c
+# The flags are recorded in a stamp that every object depends on, so that a change of profile or
+# of KOPT rebuilds them even though no source changed.
+$(BUILD)/.kflags: FORCE | $(BUILD)
+	@printf '%s\n' '$(KCFLAGS) | $(KOPT) | $(KASMFLAGS)' | cmp -s - $@ || \
+	  printf '%s\n' '$(KCFLAGS) | $(KOPT) | $(KASMFLAGS)' > $@
+
+FORCE:
+
+$(BUILD)/obj/%.c.o: %.c $(BUILD)/.kflags
 	@mkdir -p $(@D)
 	$(CC) $(KCFLAGS) $(KOPT) -MMD -MP -c -o $@ $<
 
-$(BUILD)/obj/%.asm.o: %.asm
+$(BUILD)/obj/%.asm.o: %.asm $(BUILD)/.kflags
 	@mkdir -p $(@D)
 	$(NASM) -f elf64 $(KASMFLAGS) -MD $(@:.o=.d) -MP -MT $@ -o $@ $<
 

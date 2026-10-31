@@ -21,7 +21,7 @@ fail=0
 ok()  { echo "PASS  $*"; }
 bad() { echo "FAIL  $*"; fail=1; }
 
-make clean BUILD="$out" >/dev/null
+for d in "$out" "$out"-p1 "$out"-p0 "$out"-f1 "$out"-f0 "$out"-sw; do make clean BUILD="$d" >/dev/null; done
 
 # 1. Without libgcc the link must fail on the 128-bit division helper (ld says so itself).
 if make "${fxargs[@]}" all >"$tmp/nolibgcc.log" 2>&1; then
@@ -75,6 +75,46 @@ echo 'const char *when(void) { return __DATE__; }' >> "$tmp/bad/main.c"
 if make BUILD="$tmp/badbuild2" KSRC_DIRS="$tmp/bad" KERNEL_LD="$tmp/bad/kernel.ld" CROSS="$cross" \
         KERNEL_LIBGCC=1 all >/dev/null 2>&1; then
     bad "__DATE__ accepted"; else ok "__DATE__ rejected"; fi
+
+# 9. Build profiles (KAMOS_DEBUG, bugcheck.h): ASSERT is compiled in for debug and out for release.
+#    Oracles: the disassembly of assert_probe (calls to KeBugCheckEx), and QEMU's exit code when
+#    the fixture is built with a failing ASSERT (37 = bugcheck in debug, 33 in release).
+prof_cmd() { # profile, extra make args...
+    local p=$1; shift
+    make BUILD="$out-p$p" KAMOS_DEBUG="$p" KSRC_DIRS="$fx" KERNEL_LD="$fx/kernel.ld" \
+         KERNEL_LIBGCC=1 CROSS="$cross" "$@"
+}
+exit_of() { sed -n 's/.*qemu exit code: \([0-9]*\) ---.*/\1/p' "$1" | tail -1; }
+for p in 1 0; do
+    name=$([ "$p" = 1 ] && echo debug || echo release)
+    prof_cmd "$p" all iso >"$tmp/prof-$p.log" 2>&1 || { cat "$tmp/prof-$p.log"; exit 1; }
+    calls=$("${cross}objdump" -d --no-show-raw-insn "$out-p$p/kernel.elf" 2>/dev/null |
+            sed -n '/<assert_probe>:/,/^$/p' | grep -c 'call.*<KeBugCheckEx>' || true)
+    if [ "$p" = 1 ] && [ "$calls" -gt 0 ]; then ok "debug: assert_probe calls KeBugCheckEx ($calls)"
+    elif [ "$p" = 0 ] && [ "$calls" -eq 0 ]; then ok "release: assert_probe has no KeBugCheckEx call"
+    else bad "$name: $calls KeBugCheckEx calls in assert_probe"; fi
+    prof_cmd "$p" test >"$tmp/prof-test-$p.log" 2>&1 || true
+    if [ "$(exit_of "$tmp/prof-test-$p.log")" = 33 ] && grep -q "KTEST fixture profile-$name PASS" "$tmp/prof-test-$p.log"; then
+        ok "$name: boots, ASSERT/VERIFY evaluation as specified (exit 33)"; else bad "$name: boot test"; tail -8 "$tmp/prof-test-$p.log"; fi
+    # A failing ASSERT: debug stops with bugcheck, release does not even evaluate it.
+    kopt=$([ "$p" = 1 ] && echo "-Og -g3" || echo "-O2 -g")
+    make BUILD="$out-f$p" KAMOS_DEBUG="$p" KSRC_DIRS="$fx" KERNEL_LD="$fx/kernel.ld" KERNEL_LIBGCC=1 \
+         CROSS="$cross" KOPT="$kopt -DFIXTURE_FAIL_ASSERT" all iso test >"$tmp/fail-$p.log" 2>&1 || true
+    want=$([ "$p" = 1 ] && echo 37 || echo 33)
+    if [ "$(exit_of "$tmp/fail-$p.log")" = "$want" ]; then ok "$name: failing ASSERT gives QEMU exit $want"
+    else bad "$name: failing ASSERT: wanted exit $want, got '$(exit_of "$tmp/fail-$p.log")'"; fi
+done
+
+# 10. Default paths are unchanged and the profiles choose their own directory.
+make -n -B all CROSS="$cross" 2>/dev/null | grep -q 'build/kernel.elf' && ok "default output stays build/kernel.elf" || bad "default path changed"
+make -n -B all KAMOS_DEBUG=0 CROSS="$cross" 2>/dev/null | grep -q 'build/release/kernel.elf' && ok "KAMOS_DEBUG=0 builds in build/release" || bad "release path"
+make -n -B all KAMOS_DEBUG=1 CROSS="$cross" 2>/dev/null | grep -q 'build/debug/kernel.elf' && ok "KAMOS_DEBUG=1 builds in build/debug" || bad "debug path"
+make KAMOS_DEBUG=2 -n all >/dev/null 2>&1 && bad "KAMOS_DEBUG=2 accepted" || ok "KAMOS_DEBUG=2 rejected"
+
+# 11. Switching profile in one build directory rebuilds the objects (flags stamp).
+make BUILD="$out-sw" KAMOS_DEBUG=1 KSRC_DIRS="$fx" KERNEL_LD="$fx/kernel.ld" KERNEL_LIBGCC=1 CROSS="$cross" all >/dev/null 2>&1
+make BUILD="$out-sw" KAMOS_DEBUG=0 KSRC_DIRS="$fx" KERNEL_LD="$fx/kernel.ld" KERNEL_LIBGCC=1 CROSS="$cross" all >"$tmp/sw.log" 2>&1
+grep -q -- '-DKAMOS_DEBUG=0.*main.c.o' "$tmp/sw.log" && ok "profile switch recompiles main.c.o" || bad "profile switch did not recompile"
 
 [ "$fail" -eq 0 ] && echo "kbuild-selftest: PASS" || echo "kbuild-selftest: FAIL"
 exit $fail
