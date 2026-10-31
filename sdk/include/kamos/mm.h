@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright (c) 2026 The Kamos-NT Authors */
 /*
- * Memory manager (ADR-0005).
+ * Memory manager (ADR-0005, RFC-0001).
  * Owner: A04. Contract state: provisional until the Wave 2 gate.
  */
 #ifndef KAMOS_MM_H
@@ -26,7 +26,8 @@ typedef enum _POOL_TYPE {
 
 /*
  * Pool allocation. Tag: four ASCII characters identifying the caller, for accounting.
- * Returns NULL on failure. NonPagedPool up to DISPATCH_LEVEL, PagedPool at PASSIVE_LEVEL.
+ * Returns NULL on failure (allocators are the one exception to the NTSTATUS rule, ADR-0007).
+ * NonPagedPool up to DISPATCH_LEVEL, PagedPool at PASSIVE_LEVEL.
  */
 void *MmAllocatePool(POOL_TYPE Type, SIZE_T Size, ULONG Tag);
 void  MmFreePool(void *Block, ULONG Tag);
@@ -36,14 +37,37 @@ NTSTATUS MmAllocatePhysicalPage(PHYSICAL_ADDRESS *Page);
 void     MmFreePhysicalPage(PHYSICAL_ADDRESS Page);
 
 /*
- * Maps Count pages of physical memory at a page-aligned virtual address in the current
- * address space. PASSIVE_LEVEL. Errors: STATUS_INVALID_PARAMETER (misaligned, W|X,
- * non-canonical, kernel/user mismatch), STATUS_OBJECT_NAME_COLLISION (already mapped),
- * STATUS_NO_MEMORY (page tables).
+ * Address spaces. One per process; the kernel half (PML4 entries 256 to 511) is shared by all
+ * of them (ADR-0005). The lock of an address space has rank LOCK_RANK_ADDRESS_SPACE.
+ *
+ * MmCreateAddressSpace returns a space with an empty user half. PASSIVE_LEVEL.
+ * MmDestroyAddressSpace frees the page tables only. The frames that were mapped belong to
+ * whoever mapped them, who unmaps and frees them first. The space must not be current on any
+ * processor. PASSIVE_LEVEL.
+ * MmSwitchAddressSpace loads the space on the current processor. Called by the scheduler,
+ * DISPATCH_LEVEL only.
  */
+typedef struct _ADDRESS_SPACE ADDRESS_SPACE;   /* Opaque. */
+
+ADDRESS_SPACE *MmGetKernelAddressSpace(void);
+ADDRESS_SPACE *MmGetCurrentAddressSpace(void);
+NTSTATUS       MmCreateAddressSpace(ADDRESS_SPACE **Space);
+void           MmDestroyAddressSpace(ADDRESS_SPACE *Space);
+void           MmSwitchAddressSpace(ADDRESS_SPACE *Space);
+
+/*
+ * Maps Count pages of physical memory at a page-aligned virtual address. PASSIVE_LEVEL.
+ * The InSpace forms work on any address space without switching to it (a loader builds a new
+ * process image this way); MmMapPages and MmUnmapPages act on the current one.
+ * Errors: STATUS_INVALID_PARAMETER (misaligned, W|X, non-canonical, kernel/user mismatch),
+ * STATUS_OBJECT_NAME_COLLISION (already mapped), STATUS_NO_MEMORY (page tables).
+ */
+NTSTATUS MmMapPagesInSpace(ADDRESS_SPACE *Space, void *Virtual, PHYSICAL_ADDRESS Physical,
+                           SIZE_T Count, ULONG Prot);
+NTSTATUS MmUnmapPagesInSpace(ADDRESS_SPACE *Space, void *Virtual, SIZE_T Count);
 NTSTATUS MmMapPages(void *Virtual, PHYSICAL_ADDRESS Physical, SIZE_T Count, ULONG Prot);
 NTSTATUS MmUnmapPages(void *Virtual, SIZE_T Count);
-NTSTATUS MmProtectPages(void *Virtual, SIZE_T Count, ULONG Prot);
+NTSTATUS MmProtectPages(void *Virtual, SIZE_T Count, ULONG Prot);   /* Current space. */
 
 /* Translation through the direct map. Any level. */
 void            *MmPhysicalToVirtual(PHYSICAL_ADDRESS Physical);

@@ -42,7 +42,8 @@ void     IoDeleteDevice(DEVICE_OBJECT *Device);
 
 /*
  * Completes a request exactly once. A second completion is a bug check in debug builds.
- * Up to DISPATCH_LEVEL.
+ * Up to DISPATCH_LEVEL. An interrupt handler runs at DEVICE_LEVEL, so it queues a DPC
+ * (ke.h) and the DPC routine completes the request.
  */
 void IoCompleteRequest(IO_REQUEST *Request, NTSTATUS Status, SIZE_T Information);
 

@@ -29,7 +29,15 @@ typedef struct _GENERIC_MAPPING {
 } GENERIC_MAPPING;
 
 /*
+ * Token of the thread that is running. Never NULL. PASSIVE_LEVEL. Until Phase 7 it returns a
+ * static system token (Stubbed). The object manager uses it for every access check, so no
+ * caller passes a token of its own (RFC-0001).
+ */
+const ACCESS_TOKEN *SeGetCurrentToken(void);
+
+/*
  * Decides whether Token may obtain DesiredAccess on an object protected by Descriptor.
+ * A NULL Descriptor means the object is unprotected and the request is granted after mapping.
  * On success *GrantedAccess holds the granted rights. PASSIVE_LEVEL.
  * Errors: STATUS_ACCESS_DENIED, STATUS_INVALID_PARAMETER.
  */
