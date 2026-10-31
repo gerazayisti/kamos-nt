@@ -60,6 +60,47 @@ an entry in `docs/testing/evidence.md`.
 | Third-party code of unknown origin | Provenance register, SPDX header audit before each gate | all |
 | CI with no review of workflow changes | `.github/workflows/` owned by A02, reviewed by A01 | 0 |
 
+## Wave 1 additions (2026-10-31, from the Wave 1 contracts)
+
+Reading: `sdk/include/kamos/boot.h`, `hal.h`, `ob.h`, ADR-0009, ADR-0013, RFC-0002 and its addendum
+of 2026-10-31. Nothing here is implemented in the kernel yet (no A03 source in the tree), so the
+Test column names the oracle (`docs/testing/oracles-wave1.md`) that will judge it, or says
+`no test yet`. No mitigation is claimed. Evidence status stays Designed.
+
+### B1 (boot loader to kernel), refined
+
+| Threat | Contract | Test |
+|---|---|---|
+| Overlapping or wrapping memory map entries (`Base + Length` past 2^64, same-type overlap, different-type overlap) | RFC-0002 addendum R-c: HAL sorts and merges; an overlap that cannot be merged is a bug check | no test yet: needs a function validating a structure at a given address (requested from A03 in `inbox/A03.md`); host fixtures and fuzzing, then QEMU exit `0x12` for fatal cases. `boot.h:11-14` still describes the superseded rule |
+| More regions than `BOOT_MAX_MEMORY_REGIONS`, module name longer than the field | boot.h limits; behaviour for the name case is unspecified (`p0-A10-rereview.md`, R-c) | no test yet |
+| Test hook reaching production (B1 hook, O10) | A hook that feeds crafted boot information must not exist in a release build | O10 (symbol check with `nm`); no test yet |
+
+### B7. Exceptions and interrupt state (kernel to itself, owner A03)
+
+| Threat | Contract | Test |
+|---|---|---|
+| Kernel fault with a registered fixup recovers at the wrong place | ADR-0013: fixup matches the exact faulting address only | O11 (fixup table) and O7 negative control: a fault one byte away from a registered address must bug check, exit `0x12`; no test yet |
+| Kernel fault with no fixup, or at `DEVICE_LEVEL` and above, continues silently | ADR-0013: bug check `KAMOS_STOP_UNHANDLED_EXCEPTION`; R-a: the level tested is that of the interrupted code | O7, O8 case (6); no test yet |
+| Interrupt state corrupted after recovery (IF set inside a `HalDisableInterrupts` section) | R-a: handlers run with IF clear; the return restores the interrupted RFLAGS | O8 case (6): pushfq before and after a recovered fault; no test yet |
+| Nested NMI, double fault or machine check on a shared stack | R-a: dedicated IST stack for `#DF`, `#NMI`, `#MC` (three entries; `W1-A03.md` item 6 lists two) | no test yet; inspect the TSS in a QEMU run and force `#DF` on a bad kernel stack |
+| Self-requeuing DPC starves a thread | R-b: depth 1, pending bits looped on the current stack; no bound given | O8 case (7) shows depth and stack pointer only; starvation is an open point for A05 |
+| Software interrupt re-entry overflows the stack | R-b: no re-entry | O8 case (7); no test yet |
+
+### Time and harness risks (owners A10 and A03)
+
+| Threat | Contract | Test |
+|---|---|---|
+| Wrong monotonic time under emulation or a busy-polling guest (D16): timeouts misfire | RFC-0002 item 8: TSC calibrated on the PIT | O4 against the host clock. Probe measured 0.992 to 1.0001 for an interrupt-driven guest and 0.55 to 0.82 for a busy-polling one (`oracles-wave1.md` section 5). Calibration under busy polling stays a risk |
+| A test that cannot fail (placeholder `KTEST-END pass=1`, D17) hides a regression | ADR-0010 grammar and exit values | Parser selftest (25 fixtures) and sanitizer canaries pass when run directly; `run-test.sh` still accepts the placeholder |
+| Memory errors in host-tested code unseen | ASan and UBSan, no recovery, gcc and clang | `make test-host` once A02 includes `host.mk` |
+
+### B3 (handles), refined
+
+| Threat | Contract | Test |
+|---|---|---|
+| Granted bits outside the type's `ValidAccessMask` | `ob.h:75`: `STATUS_INVALID_PARAMETER` (D02 fix) | no test yet (Phase 5) |
+| `ObDuplicateHandle` grants more than the source handle holds | Not stated in `ob.h` (open residual) | no test yet; A01 to state the rule |
+
 ## Out of scope for v0.1
 
 Secure boot, side-channel mitigations, multi-user isolation (no security enforcement before Phase 7),
