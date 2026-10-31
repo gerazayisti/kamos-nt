@@ -1,0 +1,7 @@
+# Keeps the pinned GitHub Actions current (threat model B6). Owner: A02.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
