@@ -35,3 +35,70 @@ before deciding.
   there, the row is reworded to rest only on code emitted by our own compilers.
 - Impact on agents: A03 (items 2, 3, 7, 8), A10 (items 1, 2, 7), A02 (item 1: `run-test.sh` must
   distinguish exit codes 33, 35 and 37), A06 (item 4).
+
+## Addendum 2026-10-31: R-a, R-b, R-c (A01 decisions, A10 review)
+
+A10's re-review (`docs/reports/p0-A10-rereview.md`) left three reservations. A01 decided them
+the same day; the decisions are copied here as given, and A10's review follows each one. A01 edits
+the ADRs and `boot.h` accordingly; A10 has not edited them.
+
+### R-a. Level of an exception handler (D01) — A01 decision
+
+Exception handlers run at `DEVICE_LEVEL` with `IF` clear, and `#DF`, `#NMI` and `#MC` use a
+dedicated IST stack.
+
+A10 review. Agreed, with these consequences to write down:
+1. ADR-0013 says "fault at `DEVICE_LEVEL` or above" and "a fixup is allowed at `PASSIVE_LEVEL` only".
+   If every handler runs at `DEVICE_LEVEL`, those words must mean **the level of the interrupted code**,
+   saved by the entry stub, not the level inside the handler. Without this sentence rule 1 can never apply.
+2. Recovery by a fixup changes `RIP` in the saved frame and returns with `iretq`; `RFLAGS` (so `IF`) and
+   the level are then those of the interrupted code. A test must show that `IF` and the level after a
+   recovered fault equal the values before it, including when the fault happened inside a
+   `HalDisableInterrupts` section (`IF` clear, level `PASSIVE_LEVEL`).
+3. ADR-0009 lists three IST users now (`#DF`, `#NMI`, `#MC`). `W1-A03.md` item 6 names two. The TSS needs
+   three entries, each with its own stack, and `#MC` can then interrupt `#NMI` and the reverse; the stack
+   sizes and the nesting rule are A03's to state.
+4. Oracles: O7 case (c) tests the interrupted level (a fault with the level raised to `DEVICE_LEVEL` by
+   the test), and O8 gets case (6): the `IF`/level equality above.
+
+### R-b. Software interrupts (D01) — A01 decision
+
+Software-interrupt execution runs on the current thread stack with a nesting depth of 1 (no
+re-entry; pending bits are looped).
+
+A10 review. Agreed. Obligations for the test and for A03's text:
+1. The rule needs a definition of "depth 1": a software interrupt that becomes pending while one is
+   running only sets its bit; the running one loops until no bit is set. A test makes a DPC queue
+   itself and a timer tick arrive during the DPC, and requires that the entry counter never exceeds 1
+   and that the stack pointer recorded at each execution is the same (O8 case (7)).
+2. Because the loop runs on the current thread stack, a DPC that keeps requeuing itself starves the
+   thread. This decision does not bound it. I do not propose a bound (that is A05's scheduler policy); I
+   list it as a known open point.
+3. "Current thread stack" in Phase 2 means the kernel stack that exists before A05's threads: A03 states which.
+
+### R-c. Memory map (D03) — A01 decision
+
+`BOOT_INFORMATION` regions are sorted and merged by the HAL; an overlap that cannot be merged is a
+bug check.
+
+A10 review. Agreed on the direction, but this **supersedes item 5 of this RFC**, which said that
+normalisation is only sorting and dropping zero-length entries and that nothing is repaired.
+`boot.h:11-14` still says that, so A01 must amend it, and must define "can be merged" before A03 codes.
+A definition I can test: entries with the same `Type` that overlap or touch are merged into one;
+entries with different types that overlap are a bug check; `Base + Length` that wraps past 2^64 is a
+bug check; zero-length entries are dropped; more than `BOOT_MAX_MEMORY_REGIONS` entries after merging is
+a bug check; a map with no usable region is a bug check. If A01 chooses another rule the tests follow it.
+Note for the hardware milestone: real firmware maps contain overlapping usable and reserved entries; a
+bug check there makes such a PC unbootable, which is a decision for M-HW and not wrong for v0.1.
+Oracle: threat model B1 cases, run against a function that validates a structure at a given address
+(requested from A03, `docs/coordination/inbox/A03.md`), on the host with sanitizers and in QEMU with
+exit value `0x12` for the fatal cases.
+
+### Checks of the fixes (A10)
+
+| Defect | Check | Result |
+|---|---|---|
+| D13 (ADR-0006) | Read the new sentence | Fixed: "accepted by ... service resolver ... a choice, not a requirement; see provenance D07", consistent with the three shapes found at chromium/src `9fd91410ef3d`. |
+| D15 (ADR-0007) | Read the new sentence | Fixed: bit 28 "MUST be 0 in [MS-ERREF]" matches the page text; `KAMOS_ERROR_CODE` keeps bit 28 clear (`0xE00A0000`). |
+| D18 (ADR-0011) | Read the new row | Fixed: it says `gs:[0x58]` is not named by the public `winternl.h` page and is fixed by the code our compilers emit, which matches what clang emitted (`movq %gs:88`). |
+| `ob.h:75` | Read | Fixed for `ObInsertHandle`. Still open: `ObDuplicateHandle` does not say that `DesiredAccess` cannot exceed the source handle's granted mask. |
