@@ -150,3 +150,37 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - run: make test-host
       - run: make test-framework-selftest
+
+  hal-scenarios:
+    name: HAL scenarios (${{ matrix.cpu }}, ${{ matrix.profile }})
+    needs: toolchain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        cpu: [qemu64, max]
+        profile: [debug, release]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/opt/cross
+          key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
+          fail-on-cache-miss: true
+      - run: toolchain/install-deps.sh
+      - name: Build the ISO
+        run: |
+          export PATH="$HOME/opt/cross/bin:$PATH"
+          make iso CROSS=x86_64-elf- KAMOS_DEBUG=${{ matrix.profile == 'debug' && '1' || '0' }}
+      - name: Run the scenarios (a flaky scenario is reported, the oracle is not loosened)
+        run: |
+          export PATH="$HOME/opt/cross/bin:$PATH"
+          tests/hal/run-scenarios.sh ${{ matrix.profile }} ${{ matrix.cpu }}
+      - name: Keep the scenario logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: scenarios-${{ matrix.cpu }}-${{ matrix.profile }}
+          path: build/${{ matrix.profile }}/scenario-*.log
+          if-no-files-found: warn

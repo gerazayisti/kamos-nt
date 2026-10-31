@@ -75,8 +75,12 @@ KASMFLAGS ?=
 # 1 = link the libgcc built with -mno-red-zone (ADR-0003: only if the kernel needs it).
 KERNEL_LIBGCC ?= 0
 
-ifeq ($(strip $(KSRC_C) $(KSRC_ASM)),)
-# Until A03 delivers Phase 1 there is no kernel source: build the placeholder.
+# KERNEL_PLACEHOLDER=1 forces the placeholder kernel (a known, tiny kernel for testing the harness
+# and the QEMU profiles) even when kernel sources exist.
+KERNEL_PLACEHOLDER ?= 0
+KUSE_PLACEHOLDER := $(if $(filter 1,$(KERNEL_PLACEHOLDER)),1,$(if $(strip $(KSRC_C) $(KSRC_ASM)),,1))
+ifeq ($(KUSE_PLACEHOLDER),1)
+# No kernel source (or the placeholder was requested): build the placeholder.
 KERNEL_KIND := placeholder
 KERNEL_ASM  := tools/image/placeholder/entry.asm
 KERNEL_LD   := tools/image/placeholder/placeholder.ld
