@@ -1,0 +1,16 @@
+# Full suite of the A03 kernel (Phase 1 and 2). Written by hand, independent of the build.
+exit 33
+line ^Kamos-NT kernel 0\.1\.0 \((debug|release)\) x86_64$
+forbid KAMOS STOP
+forbid ASSERT FAILED
+require boot entry
+require boot cpu_state
+require boot bootinfo_shape
+require boot bootinfo_module
+require boot rtl_format
+require map text_rx
+require map rodata_r_nx
+require map data_rw_nx
+require map null_guard_absent
+require map image_alias_removed
+require map identity_nx

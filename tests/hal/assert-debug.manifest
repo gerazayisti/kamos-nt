@@ -1,0 +1,4 @@
+# Scenario "assert" in a debug build: the ASSERT fails, bug check, QEMU exit 37 (ADR-0010).
+exit 37
+line ^ASSERT FAILED: KiBootMagic == 0 at hal/ktest/ktests\.c:[0-9]+$
+line ^KAMOS STOP 0x00000001 ASSERTION_FAILED P1=0x[0-9a-f]+ P2=0x0 P3=0x0 P4=0x0$
