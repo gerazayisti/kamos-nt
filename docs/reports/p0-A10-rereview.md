@@ -54,11 +54,11 @@ behaviour claims are reviewed on paper and then listed as test obligations in
 
 | ID | Severity | Owner | Finding |
 |---|---|---|---|
-| D12 | Medium | A01 | ADR-0006 says the stub shape is "required by the Chromium sandbox". At chromium/src `9fd91410ef3d` (and the file still exists on `main`) the matcher accepts **three** x64 shapes (plain, a Windows 8 variant with three `mov` before the prefix, and one with `test byte ptr`/`jne` before `syscall`). The plain shape is one of them, not the only one. Proposed wording in `provenance.md` (D07). Resolves D07 by correcting the claim. (D11 of `p0-A10.md` is an Info item; new IDs start at D12.) |
-| D13 | Medium | A01 | ADR-0011 says the TEB TLS pointer is at `gs:[0x58]`, citing public SDK headers. The public page for `winternl.h` `TEB` documents `Reserved1[12]` before `ProcessEnvironmentBlock` and no TLS pointer at that offset (it would be `Reserved1[11]`); it also tells programs not to read the structure directly. The `NT_TIB` page URL tried returned 404. So `gs:[0x58]` is not backed by the source ADR-0011 names. Proposed: rest the row on code emitted by our own compilers (allowed by ADR-0012). I checked what clang emits (see evidence). |
-| D14 | Low | A01 | ADR-0007 does not mention the reserved N bit (bit 28, "MUST be 0" in [MS-ERREF] 2.3). `KAMOS_ERROR_CODE` leaves it 0; add one sentence. |
-| D15 | Medium | A03 | O4/RFC-0002 item 8: calibration shape risk above. Not a defect in the text; a design obligation. |
-| D16 | Low | A02 | `tools/qemu/run-test.sh` cannot tell exit 35 or 37 from other failures; and the placeholder's `KTEST-END pass=1` with no `KTEST` line is rejected by the parser by design. A02 to print a real `KTEST` line in the placeholder or keep `run-test.sh` until A03. |
+| D13 | Medium | A01 | ADR-0006 says the stub shape is "required by the Chromium sandbox". At chromium/src `9fd91410ef3d` (and the file still exists on `main`) the matcher accepts **three** x64 shapes (plain, a Windows 8 variant with three `mov` before the prefix, and one with `test byte ptr`/`jne` before `syscall`). The plain shape is one of them, not the only one. Proposed wording in `provenance.md` (D07). Resolves D07 by correcting the claim. (D11 of `p0-A10.md` is an Info item; new IDs start at D13.) |
+| D14 | Medium | A01 | ADR-0011 says the TEB TLS pointer is at `gs:[0x58]`, citing public SDK headers. The public page for `winternl.h` `TEB` documents `Reserved1[12]` before `ProcessEnvironmentBlock` and no TLS pointer at that offset (it would be `Reserved1[11]`); it also tells programs not to read the structure directly. The `NT_TIB` page URL tried returned 404. So `gs:[0x58]` is not backed by the source ADR-0011 names. Proposed: rest the row on code emitted by our own compilers (allowed by ADR-0012). I checked what clang emits (see evidence). |
+| D15 | Low | A01 | ADR-0007 does not mention the reserved N bit (bit 28, "MUST be 0" in [MS-ERREF] 2.3). `KAMOS_ERROR_CODE` leaves it 0; add one sentence. |
+| D16 | Medium | A03 | O4/RFC-0002 item 8: calibration shape risk above. Not a defect in the text; a design obligation. |
+| D17 | Low | A02 | `tools/qemu/run-test.sh` cannot tell exit 35 or 37 from other failures; and the placeholder's `KTEST-END pass=1` with no `KTEST` line is rejected by the parser by design. A02 to print a real `KTEST` line in the placeholder or keep `run-test.sh` until A03. |
 | D09 | Medium | A01, A02 | Recount at HEAD, see below. |
 
 D09 recount at `990e3f0`. Referenced as if existing, absent: `sdk/syscalls/table.def`
@@ -77,7 +77,7 @@ exact for paths with a directory part; bare filenames were checked by hand with 
 
 The Phase 0 criterion "A10 finds no contradiction in the ADRs" is **met for design contradictions**
 (D01 to D05 and the RFC-0002 items are closed or reduced to the reservations above). It is **not met
-for factual claims**: D12 and D13 are statements in ADRs that the public sources do not support as
+for factual claims**: D13 and D14 are statements in ADRs that the public sources do not support as
 written. Both are one-line edits by A01. My signature status: **signed with reservations R-a to R-c,
-D12 and D13 to be corrected**, subject to the replay in `evidence.md`, whose outcome is recorded
+D13 and D14 to be corrected**, subject to the replay in `evidence.md`, whose outcome is recorded
 there. A10 does not sign anything about the quality of the placeholder test (see `status/build.md`).

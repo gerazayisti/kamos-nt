@@ -70,3 +70,9 @@ ExceptionList, StackBase, StackLimit, SubSystemTib, FiberData, ArbitraryUserPoin
 ADR-0011 TEB row so that `gs:[0x58]` rests on "code emitted by our own compilers" (ADR-0012 allows
 it), checked by compiling a `__declspec(thread)` access with clang for `x86_64-pc-windows-msvc`
 and reading the emitted instruction, and drop `winternl.h` as its source.
+Check made on 2026-10-31 (clang 18.1.3, `--target=x86_64-pc-windows-msvc -O1 -S`, source
+`__declspec(thread) int x; int f(void){ return x; }`): the emitted code is `movl _tls_index(%rip), %eax`
+then `movq %gs:88, %rcx`; 88 decimal is 0x58. So our own compiler does emit the access ADR-0011
+describes, which is the source ADR-0012 allows. `x86_64-w64-mingw32-gcc` 13-win32 uses emulated TLS
+(`__emutls_get_address`) for `__thread` and does not emit `gs:` there; the 0x58 contract matters for
+the clang/lld path of ADR-0003 only.
