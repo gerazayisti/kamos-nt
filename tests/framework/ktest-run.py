@@ -267,13 +267,13 @@ def cmd_qemu(a):
 
 
 def cmd_selftest(a):
-    """Each fixture NAME.log has NAME.meta: exit=N, verdict=PASS|FAIL, optional manifest=FILE,
+    """Each fixture NAME.serial has NAME.meta: exit=N, verdict=PASS|FAIL, optional manifest=FILE,
     stamped=1, reason=SUBSTRING (a bad fixture must fail for that reason). The expected verdicts are written by hand."""
     ok = bad = 0
     for fn in sorted(os.listdir(a.dir)):
-        if not fn.endswith(".log"):
+        if not fn.endswith(".serial"):
             continue
-        base = os.path.join(a.dir, fn[:-4])
+        base = os.path.join(a.dir, fn[:-7])
         meta = {}
         with open(base + ".meta", encoding="utf-8") as f:
             for raw in f:
@@ -286,7 +286,7 @@ def cmd_selftest(a):
         import io
         saved, sys.stdout = sys.stdout, io.StringIO()
         try:
-            probs = judge(read_log(base + ".log", meta.get("stamped") == "1"),
+            probs = judge(read_log(base + ".serial", meta.get("stamped") == "1"),
                           int(meta["exit"]), m)
         finally:
             sys.stdout = saved
@@ -294,14 +294,14 @@ def cmd_selftest(a):
         want = meta["verdict"]
         if got == want and "reason" in meta and not any(meta["reason"] in x for x in probs):
             bad += 1
-            print("WRONG %-34s failed for another reason than %r: %s" % (fn[:-4], meta["reason"], probs))
+            print("WRONG %-34s failed for another reason than %r: %s" % (fn[:-7], meta["reason"], probs))
             continue
         if got == want:
             ok += 1
-            print("ok    %-34s verdict %s" % (fn[:-4], got))
+            print("ok    %-34s verdict %s" % (fn[:-7], got))
         else:
             bad += 1
-            print("WRONG %-34s expected %s, got %s: %s" % (fn[:-4], want, got, probs))
+            print("WRONG %-34s expected %s, got %s: %s" % (fn[:-7], want, got, probs))
     print("selftest: %d fixtures as expected, %d wrong" % (ok, bad))
     return 1 if bad or ok == 0 else 0
 

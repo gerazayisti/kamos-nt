@@ -1,0 +1,3 @@
+KTEST timer start PASS t100ns=0
+KTEST timer end PASS t100ns=100000000
+KTEST-END pass=2 fail=0 skip=0

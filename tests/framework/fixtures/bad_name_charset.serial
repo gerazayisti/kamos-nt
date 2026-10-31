@@ -1,0 +1,2 @@
+KTEST mm bad/name PASS
+KTEST-END pass=1 fail=0 skip=0

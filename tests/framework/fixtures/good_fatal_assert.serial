@@ -1,0 +1,2 @@
+KTEST mm alloc PASS
+ASSERT FAILED: x == 1 at foo.c:12
