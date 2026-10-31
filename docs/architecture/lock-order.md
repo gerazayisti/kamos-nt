@@ -1,6 +1,8 @@
 # Global lock order
 
-A lock may only be acquired while holding locks of strictly **lower** rank. Each owner adds
+A lock may only be acquired while holding locks of strictly **lower** rank, with one exception:
+several locks of the same rank and the same kind may be held together when taken in increasing
+address order (rules below). Each owner adds
 its locks through a light RFC. The rank is stored in the lock when it is initialised
 (`KeInitializeSpinLock`, `KeInitializeMutex`, constants `LOCK_RANK_*` in `ke.h`). Debug builds
 assert the order and the execution level (ADR-0009) at every acquire.

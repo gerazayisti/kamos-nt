@@ -2,7 +2,8 @@
 /* Copyright (c) 2026 The Kamos-NT Authors */
 /*
  * Execution levels (ADR-0009).
- * Owner: A05 (raise/lower), A03 (CR8 and interrupt controller side).
+ * Owner: A05. In v0.1 A03 implements raise and lower in hal/ (software levels, ADR-0009) and
+ * hands them to A05 at the start of Wave 2. CR8 is unused until the APIC milestone.
  * Contract state: provisional until the Wave 2 gate.
  */
 #ifndef KAMOS_IRQL_H
