@@ -81,6 +81,14 @@ Hardware interrupts do not print a line.
   in the runs seen (the boot prints the count), and the median stayed usable. An earlier method
   (least squares with lost-tick inference) mistook a late tick for two lost ticks and was dropped
   (methodology addendum).
+- Re-measurement: every 100 ticks (about 1 s) the timer handler repeats the same median estimate on
+  the last 100 ticks and, if the new frequency is within a factor 2 of the old one, re-bases the clock
+  (`Base100ns` and `BaseTsc` at the moment of the change, new multiplier) under a sequence counter,
+  so the clock stays continuous and monotonic. Readers retry if the counter changed. Reason: on the
+  development host (WSL2, QEMU TCG) the guest TSC ran at about 2.706 GHz in some boots and about
+  2.959 GHz in others, and some boots changed rate during the 10 s test; a calibration made once
+  was then 1 % to 9 % off and `tests/hal/run-scenarios.sh release max` failed in 3 of 6 runs.
+  With an invariant TSC the re-measurement returns the same value and changes nothing.
 
 ## Other published lines
 

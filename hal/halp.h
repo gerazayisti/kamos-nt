@@ -236,7 +236,8 @@ USHORT HalpPicReadRegister(BOOLEAN Isr); /* OCW3 read: ISR if true, else IRR; ma
 ULONG  HalpPicSpuriousCount(ULONG Line);
 void   HalpInitTimer(void); /* programs the PIT, calibrates the TSC, returns with IF set */
 extern ULONG64 HalpLostTicks;
-ULONG64        HalpCalibrationSample(ULONG I);
+extern ULONG64 HalpRateUpdates;            /* once-a-second re-measurements applied */
+extern ULONG64 HalpTscHzMin, HalpTscHzMax; /* extremes of every measurement */
 ULONG64        HalpTickCount(void);
 ULONG64        HalpTscHz(void);
 ULONG64        HalpTickPeriod100ns(void);

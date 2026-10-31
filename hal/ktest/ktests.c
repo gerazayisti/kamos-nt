@@ -150,29 +150,10 @@ static void ScenarioAssert(void)
     KtScenarioFellThrough("assert");
 }
 
-/* Diagnostic, not a test: prints the TSC deltas between the calibration ticks, in kilocycles. */
-static void ScenarioCalDump(void)
-{
-    for (ULONG i = 2; i < 102; i += 10) {
-        char    line[200];
-        kt__buf b = {line, sizeof line, 0};
-
-        line[0] = '\0';
-        kt__cat(&b, "caldump");
-        for (ULONG k = i; k < i + 10; k++) {
-            kt__cat(&b, " ");
-            kt__cat_u64(&b, (HalpCalibrationSample(k + 1) - HalpCalibrationSample(k)) / 1000, 0);
-        }
-        kprintf("%s\n", line);
-    }
-    HalHaltSystem(HAL_EXIT_TESTS_PASSED);
-}
-
 static const struct {
     const char *Name;
     void (*Run)(void);
 } Scenarios[] = {
-    {"caldump", ScenarioCalDump},
     {"assert", ScenarioAssert},
     {"pf-nofixup", KtScenarioPfNoFixup},
     {"pf-offbyone", KtScenarioPfOffByOne},

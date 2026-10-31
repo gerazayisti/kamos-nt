@@ -154,15 +154,26 @@ static void DispatchWaitsForLowering(void)
     KIRQL old;
     ULONG before;
 
+    /*
+     * The timer tick also requests the dispatch interrupt, and at PASSIVE_LEVEL that request runs
+     * the installed handler at once. So the level is raised BEFORE the handler is installed and the
+     * counter sampled: from then on nothing can run it until the lowering below (this test was
+     * flaky when it sampled first: a tick between the sample and the raise added a run).
+     */
+    KeRaiseIrql(DISPATCH_LEVEL, &old);
     HalSetDispatchInterruptHandler(CountingHandler);
     DispatchRequeue  = 0;
     DispatchWaitTick = 0;
     before           = DispatchRuns;
-    KeRaiseIrql(DISPATCH_LEVEL, &old);
     HalRequestDispatchInterrupt();
     KTX_CHECK_EQ(DispatchRuns, before); /* held while the level is DISPATCH_LEVEL */
     KeLowerIrql(old);
-    KTX_CHECK_EQ(DispatchRuns, before + 1); /* delivered when the level dropped below it */
+    /*
+     * Delivered when the level dropped below it. "At least once": the handler runs with IF set, a
+     * timer tick can arrive inside it and request the dispatch interrupt again, and that makes the
+     * delivery loop run it a second time (legitimate; seen once in 3 runs of the exact check).
+     */
+    KTX_CHECK(DispatchRuns >= before + 1);
     KTX_CHECK_EQ(DispatchSeenLevel, DISPATCH_LEVEL);
     KTX_CHECK_EQ(DispatchSeenIf, ARCH_RFLAGS_IF);
     KTX_CHECK_EQ(KeGetCurrentIrql(), PASSIVE_LEVEL);
@@ -178,7 +189,8 @@ static void DispatchImmediateAtPassive(void)
     DispatchWaitTick = 0;
     before           = DispatchRuns;
     HalRequestDispatchInterrupt();
-    KTX_CHECK_EQ(DispatchRuns, before + 1); /* PASSIVE_LEVEL: runs at once */
+    /* PASSIVE_LEVEL: runs at once. A timer tick may add a run of its own, so "at least one". */
+    KTX_CHECK(DispatchRuns >= before + 1);
     KTX_CHECK_EQ(KeGetCurrentIrql(), PASSIVE_LEVEL);
     HalSetDispatchInterruptHandler(NULL);
 }
@@ -188,17 +200,17 @@ static void DispatchHeldAtDeviceLevel(void)
     KIRQL old;
     ULONG before;
 
+    KeRaiseIrql(DEVICE_LEVEL, &old); /* before installing and sampling: see the test above */
     HalSetDispatchInterruptHandler(CountingHandler);
     DispatchRequeue  = 0;
     DispatchWaitTick = 0;
     before           = DispatchRuns;
-    KeRaiseIrql(DEVICE_LEVEL, &old);
     HalRequestDispatchInterrupt();
     KTX_CHECK_EQ(DispatchRuns, before);
     KeLowerIrql(DISPATCH_LEVEL); /* still not below DISPATCH_LEVEL */
     KTX_CHECK_EQ(DispatchRuns, before);
     KeLowerIrql(PASSIVE_LEVEL);
-    KTX_CHECK_EQ(DispatchRuns, before + 1);
+    KTX_CHECK(DispatchRuns >= before + 1); /* at least once, see the test above */
     KTX_CHECK_EQ(FlagIf(), ARCH_RFLAGS_IF);
     (void)old;
     HalSetDispatchInterruptHandler(NULL);
@@ -342,6 +354,9 @@ static void TimerEnd(void)
     tickTime = (HalpTickCount() - TimerStartTicks) * HalpTickPeriod100ns();
     diff     = tickTime > now - TimerStart100ns ? tickTime - (now - TimerStart100ns)
                                                 : (now - TimerStart100ns) - tickTime;
+    kprintf("timer: tsc_hz min %lu max %lu, %lu rate update(s) since boot\n",
+            (unsigned long)HalpTscHzMin, (unsigned long)HalpTscHzMax,
+            (unsigned long)HalpRateUpdates);
     KtNoteU64("t100ns", now);
     KtNoteU64("tsc_span", now - TimerStart100ns);
     KtNoteU64("tick_span", tickTime);

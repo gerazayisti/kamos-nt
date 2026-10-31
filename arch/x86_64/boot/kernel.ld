@@ -52,9 +52,13 @@ SECTIONS
         __kfixup_start = .;
         KEEP(*(.kfixup))
         __kfixup_end = .;
-        /* number of 16-byte entries, so C never subtracts two linker symbols */
-        __kfixup_count = (__kfixup_end - __kfixup_start) / 16;
     } :rodata
+    /*
+     * Number of 16-byte entries, so that C never subtracts two linker symbols. Defined OUTSIDE the
+     * output section and with ABSOLUTE(): a symbol assigned inside a section statement is relative
+     * to that section, and its "value" in C would be an address, not a count.
+     */
+    __kfixup_count = ABSOLUTE((__kfixup_end - __kfixup_start) / 16);
     ASSERT((__kfixup_end - __kfixup_start) % 16 == 0, ".kfixup must hold whole 16-byte entries")
     . = ALIGN(4K);
     __rodata_end = .;

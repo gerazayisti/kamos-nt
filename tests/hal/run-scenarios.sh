@@ -10,8 +10,16 @@
 # the expectation does not depend on the profile. Exit status 0 only if every scenario held.
 set -u
 
-profile=${1:?usage: run-scenarios.sh <debug|release> <qemu64|max> [scenario ...]}
-cpu=${2:?cpu}
+usage() {
+    echo "usage: tests/hal/run-scenarios.sh <debug|release> <qemu64|max> [scenario ...]" >&2
+    echo "  both arguments are required; build/<profile>/kamos.iso must exist (make KAMOS_DEBUG=1|0 iso)" >&2
+    echo "  with no scenario, runs 'all' and every scenario that has a manifest in tests/hal/" >&2
+    exit 2
+}
+[ $# -ge 2 ] || usage
+case "$1" in debug | release) ;; *) usage ;; esac
+profile=$1
+cpu=$2
 shift 2
 cd "$(dirname "$0")/../.."
 iso=build/$profile/kamos.iso
