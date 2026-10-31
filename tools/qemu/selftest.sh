@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 The Kamos-NT Authors
 #
-# Checks the QEMU profiles on the built ISO (default build/kamos.iso) for qemu64 and max. The
+# Checks the QEMU profiles on the built ISO (the placeholder, built here) for qemu64 and max. The
 # command line of each profile is compared with Annex A.5 of the plan, and each profile is run
 # for its observable effect. The test profile is run-test.sh (make test). Owner: A02.
 # Usage: tools/qemu/selftest.sh
@@ -10,7 +10,13 @@ set -uo pipefail
 
 cd "$(dirname "$0")/../.."
 here=tools/qemu
-BUILD=${BUILD:-build}
+# The profiles are checked on the placeholder kernel (known and tiny), whatever the default kernel is.
+BUILD=${BUILD:-build/ph}
+export PATH="$HOME/opt/cross/bin:$PATH"
+if [ -z "${ISO:-}" ]; then
+    make BUILD="$BUILD" KERNEL_PLACEHOLDER=1 CROSS=x86_64-elf- iso >/dev/null 2>&1 || { echo "cannot build the placeholder ISO"; exit 2; }
+fi
+export BUILD
 fail=0
 ok()  { echo "PASS  $*"; }
 bad() { echo "FAIL  $*"; fail=1; }
@@ -30,15 +36,15 @@ for cpu in qemu64 max; do
     echo "--- cpu $cpu"
     # 1. Command lines against Annex A.5.
     c=$($here/normal.sh --print --cpu "$cpu")
-    has "$c" "-machine q35 -cpu $cpu -m 512M -cdrom build/kamos.iso" && ok "normal: command line" || bad "normal: $c"
+    has "$c" "-machine q35 -cpu $cpu -m 512M -cdrom $BUILD/kamos.iso" && ok "normal: command line" || bad "normal: $c"
     c=$($here/serial.sh --print --cpu "$cpu")
-    has "$c" "-display none -serial file:build/serial.log -no-reboot" && ok "serial: command line" || bad "serial: $c"
+    has "$c" "-display none -serial file:$BUILD/serial.log -no-reboot" && ok "serial: command line" || bad "serial: $c"
     c=$($here/faults.sh --print --cpu "$cpu")
-    has "$c" "-serial stdio -d int,cpu_reset -D build/qemu.log -no-reboot -no-shutdown" && ok "faults: command line" || bad "faults: $c"
+    has "$c" "-serial stdio -d int,cpu_reset -D $BUILD/qemu.log -no-reboot -no-shutdown" && ok "faults: command line" || bad "faults: $c"
     c=$($here/gdb.sh --print --cpu "$cpu")
     has "$c" "-serial stdio -gdb tcp::1234 -S" && ok "gdb: command line" || bad "gdb: $c"
     c=$($here/disk.sh --print --cpu "$cpu")
-    has "$c" "-drive file=build/disk.img,format=raw -monitor telnet:127.0.0.1:5555,server,nowait" && ok "disk: command line" || bad "disk: $c"
+    has "$c" "-drive file=$BUILD/disk.img,format=raw -monitor telnet:127.0.0.1:5555,server,nowait" && ok "disk: command line" || bad "disk: $c"
 
     # 2. serial: the log holds the test end line. The placeholder has no exit device here, so
     #    the timeout ends QEMU (124 is expected).
@@ -69,7 +75,7 @@ for cpu in qemu64 max; do
     pid=$!
     if wait_port "$mport" 5; then
         out=$( { exec 3<>"/dev/tcp/127.0.0.1/$mport"; sleep 0.5; echo 'info block' >&3; sleep 1; timeout 1 cat <&3 | tr -d '\0'; } 2>/dev/null)
-        if has "$out" "build/disk.img" && has "$out" "raw"; then ok "disk: info block lists disk.img (raw)"; else bad "disk: info block gave: $out"; fi
+        if has "$out" "$BUILD/disk.img" && has "$out" "raw"; then ok "disk: info block lists disk.img (raw)"; else bad "disk: info block gave: $out"; fi
     else bad "disk: monitor port $mport never opened"; fi
     kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
 done
@@ -79,8 +85,7 @@ done
 echo "--- run-test.sh verdicts"
 old=$(mktemp -d)
 grep -v 'KTEST boot magic PASS' tools/image/placeholder/entry.asm >"$old/entry.asm"
-export PATH="$HOME/opt/cross/bin:$PATH"
-make BUILD="$old/b" KERNEL_ASM="$old/entry.asm" CROSS=x86_64-elf- iso >/dev/null 2>&1
+make BUILD="$old/b" KERNEL_PLACEHOLDER=1 KERNEL_ASM="$old/entry.asm" CROSS=x86_64-elf- iso >/dev/null 2>&1
 out=$(tools/qemu/run-test.sh "$old/b/kamos.iso" "$old/serial.log" 20 qemu64 512M 2>&1); rc=$?
 if [ "$rc" -ne 0 ] && has "$out" "qemu exit code: 33" && has "$out" "no test ran"; then
     ok "run-test: exit 33 with no KTEST line is a failure ('no test ran')"
