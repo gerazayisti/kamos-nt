@@ -129,3 +129,13 @@ jobs:
           make all iso CROSS=x86_64-elf-
           tools/qemu/selftest.sh
       - run: tools/ci/reproducible-negative.sh
+
+  static-analysis:
+    name: Static analysis and format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cppcheck clang-format
+      - run: tools/ci/static-analysis.sh --selftest
+      - run: tools/ci/static-analysis.sh
