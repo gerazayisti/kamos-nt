@@ -20,6 +20,11 @@ QEMU      ?= qemu-system-x86_64
 QEMU_CPU  ?= qemu64
 QEMU_MEM  ?= 512M
 TIMEOUT_S ?= 30
+# v0.1 boots with BIOS only (ADR-0001). Without -d, grub-mkrescue also builds an EFI image
+# whenever grub-efi-amd64-bin is installed (it is on the GitHub runner); that FAT image carries
+# the build time, so the ISO would differ from build to build (BOARD D14). EFI is milestone M-UEFI.
+# GRUB_DIR= (empty) restores the all-platform behaviour; tools/ci/reproducible-negative.sh uses it.
+GRUB_DIR  ?= /usr/lib/grub/i386-pc
 
 # Reproducible builds (ADR-0003).
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
@@ -126,7 +131,7 @@ $(ISO): $(KERNEL) $(INITRD) boot/grub/grub.cfg
 	cp $(KERNEL) $(INITRD) $(BUILD)/iso/boot/
 	cp boot/grub/grub.cfg $(BUILD)/iso/boot/grub/grub.cfg
 	find $(BUILD)/iso -exec touch -h -d @$(SOURCE_DATE_EPOCH) {} +
-	grub-mkrescue -o $@ $(BUILD)/iso --modification-date=$$(date -u -d @$(SOURCE_DATE_EPOCH) +%Y%m%d%H%M%S00) \
+	grub-mkrescue $(if $(GRUB_DIR),-d $(GRUB_DIR)) -o $@ $(BUILD)/iso --modification-date=$$(date -u -d @$(SOURCE_DATE_EPOCH) +%Y%m%d%H%M%S00) \
 	  -- -iso_nowtime =$(SOURCE_DATE_EPOCH) -alter_date_r b =$(SOURCE_DATE_EPOCH) / -- \
 	  2>$(BUILD)/grub-mkrescue.log || \
 	  { cat $(BUILD)/grub-mkrescue.log; exit 1; }
