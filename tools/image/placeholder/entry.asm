@@ -34,7 +34,7 @@ _start:
     cmp eax, MB2_LOADER_OK
     je .print
     mov esi, msg_bad
-    mov ebx, 0x11               ; any other value is a failure
+    mov ebx, 0x11               ; tests failed -> QEMU exit 35 (hal.h HAL_EXIT_TESTS_FAILED)
 .print:
     mov dx, COM1
 .next:
@@ -52,6 +52,8 @@ _start:
 
 section .rodata
 msg_ok:  db "Kamos-NT placeholder: Multiboot2 handoff OK", 13, 10
+         db "KTEST boot magic PASS", 13, 10
          db "KTEST-END pass=1 fail=0 skip=0", 13, 10, 0
 msg_bad: db "Kamos-NT placeholder: bad Multiboot2 magic", 13, 10
+         db "KTEST boot magic FAIL", 13, 10
          db "KTEST-END pass=0 fail=1 skip=0", 13, 10, 0

@@ -2,8 +2,8 @@
 # Copyright (c) 2026 The Kamos-NT Authors
 #
 # Continuous integration. Owner: A02, reviewed by A01. The logic lives in tools/ci/ so that the
-# same scripts run locally. Third-party actions are pinned to a major tag for now; pinning to
-# full commit SHAs is tracked in docs/coordination/BOARD.md (P0-09b).
+# same scripts run locally. Every action is pinned to a full commit SHA with its tag in a comment
+# (P0-09b); tools/ci/check-pins.sh enforces it.
 name: CI
 
 on:
@@ -25,18 +25,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - run: tools/ci/spdx-check.sh
+      - run: tools/ci/check-pins.sh --selftest
+      - run: tools/ci/check-pins.sh
 
   toolchain:
     name: Cross toolchain
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Restore the toolchain cache
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/opt/cross
           key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
@@ -57,8 +59,8 @@ jobs:
         cpu: [qemu64, max]
         profile: [debug, release]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache/restore@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/opt/cross
           key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
@@ -67,7 +69,7 @@ jobs:
       - run: tools/ci/build-test.sh ${{ matrix.cpu }} ${{ matrix.profile }}
       - name: Keep the serial log and checksums
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: boot-${{ matrix.cpu }}-${{ matrix.profile }}
           path: |
@@ -85,8 +87,8 @@ jobs:
       matrix:
         profile: [debug, release]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache/restore@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/opt/cross
           key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
@@ -100,8 +102,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache/restore@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/opt/cross
           key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
@@ -115,8 +117,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache/restore@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/opt/cross
           key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
@@ -135,7 +137,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - run: sudo apt-get update && sudo apt-get install -y cppcheck clang-format
       - run: tools/ci/static-analysis.sh --selftest
       - run: tools/ci/static-analysis.sh
+
+  test-host:
+    name: Host unit tests (ASan, UBSan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: make test-host
+      - run: make test-framework-selftest
