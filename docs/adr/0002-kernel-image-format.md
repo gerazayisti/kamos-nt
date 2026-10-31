@@ -16,7 +16,7 @@
   `.text` (RX), `.rodata` (R), `.data` and `.bss` (RW, NX).
 - Symbols exported by the linker script: `__kernel_start`, `__kernel_end`, `__bss_start`,
   `__bss_end`, `__text_start`, `__text_end`, `__rodata_start`, `__rodata_end`.
-- No dynamic sections, no `PT_INTERP`, no undefined symbols (checked by `readelf` in CI).
+- No dynamic sections, no `PT_INTERP`, no undefined symbols (checked by `readelf -d` and `nm -u` in CI).
 - Boot modules: one ustar archive, `initrd.tar`, carries the first user program (ELF64 static
   or flat binary) until the PE loader exists (Phase 10).
 - Debug information stays in `kernel.elf`. A stripped copy is not produced before v0.1.

@@ -28,9 +28,9 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | D10 | `ASSERT` always on; `MmVirtualToPhysical` has no error value | A01, A04 | Open (Low) | | same |
 | P0-12 | Phase 0 gate file | A01 | Written 2026-10-31: approved with reservations R1 to R5, **A10 has not signed** | A10 signature (re-review W1-05) | `docs/reports/gate-phase0.md` |
 | W1-01 | Methodology note, A03 | A03 | Assigned | | `docs/coordination/tasks/W1-A03.md` |
-| W1-02 | Methodology note, A02 | A02 | Assigned | | `docs/coordination/tasks/W1-A02.md` |
+| W1-02 | Methodology note, A02 | A02 | **Methodology accepted** with conditions C1 to C3 | | `docs/coordination/methodology/W1-A02-review.md` |
 | W1-03 | Methodology note, A04 | A04 | Assigned | | `docs/coordination/tasks/W1-A04.md` |
-| W1-04 | Methodology note, A10 | A10 | Assigned | | `docs/coordination/tasks/W1-A10.md` |
+| W1-04 | Methodology note, A10 | A10 | **Methodology accepted** with RFC-0002 decisions; contracts and harness before replay | | `docs/coordination/methodology/W1-A10-review.md` |
 | W1-05 | Independent re-review of RFC-0001 and replay of unverified evidence | A10 | Assigned | W1-04 accepted | |
 | W1-06 | Kernel build rules in the Makefile | A02 | Assigned | W1-02 accepted. Blocks A03's first build | |
 | W1-07 | Host unit-test harness with ASan and UBSan | A10 | Assigned | W1-04 accepted. Blocks A04's tests | |
@@ -38,3 +38,7 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | W1-09 | Phase 1: boot, console, boot information | A03 | Assigned | W1-01 accepted, W1-06 | |
 | W1-10 | Phase 2: GDT, IDT, exceptions, PIC, PIT, software levels | A03 | Assigned | W1-09 | |
 | W1-11 | Host-side frame allocator, page tables, pool | A04 | Assigned | W1-03 accepted, W1-07 | |
+| W1-12 | Split the cache key: host tool versions out of `versions.txt` (C1). First A02 commit | A02 | Assigned | W1-02 | |
+| W1-13 | `ASSERT` per build profile (D10): debug-only `ASSERT`, `VERIFY`, security checks never removed | A01 (header), A02 (`KAMOS_DEBUG`) | Decided; header change due before A03's first C commit | | `docs/coordination/methodology/W1-A02-review.md` |
+| W1-14 | Exit-code table: harness distinguishes 33, 35, 37; `run-test.sh` wiring | A10 (parser), A02 (wiring) | Assigned | W1-04 | `docs/rfc/RFC-0002-wave1-test-contracts.md` |
+| D12 | Findings from the A10 methodology read: `ob.h` granted access, `boot.h` wording, lock-order wording, `irql.h` owner, wait timeout sign, ADR-0002 text | A01 | Fixed in RFC-0002, awaiting A10 re-review | | `docs/rfc/RFC-0002-wave1-test-contracts.md` |

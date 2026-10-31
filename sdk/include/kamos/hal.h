@@ -36,6 +36,14 @@ NTSTATUS HalConnectInterrupt(ULONG Line, HAL_INTERRUPT_HANDLER Handler, void *Co
 /* Monotonic time since boot in 100 ns units. Any level. */
 ULONG64 HalQueryMonotonicTime(void);
 
+/*
+ * Exit values written to the QEMU isa-debug-exit port (ADR-0010). QEMU returns
+ * (ExitValue << 1) | 1, which is the code the host harness sees.
+ */
+#define HAL_EXIT_TESTS_PASSED  0x10u   /* QEMU exit 33. */
+#define HAL_EXIT_TESTS_FAILED  0x11u   /* QEMU exit 35: tests ran and at least one failed. */
+#define HAL_EXIT_BUGCHECK      0x12u   /* QEMU exit 37: KeBugCheckEx, including a failed ASSERT. */
+
 /* Stops the machine (QEMU: isa-debug-exit with ExitValue, see ADR-0010). Never returns. */
 _Noreturn void HalHaltSystem(ULONG ExitValue);
 
