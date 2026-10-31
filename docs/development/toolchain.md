@@ -165,5 +165,7 @@ The workflow is `.github/workflows/ci.yml`; logic lives in `tools/ci/`. Jobs: li
 cross toolchain (cached), build and boot on `qemu64` and `max` for the debug and release profiles,
 reproducibility for both profiles, the broken-source self-test, the kernel build rules on the
 fixture (with the QEMU profile check and the reproducibility negative test), and static analysis.
-First remote run (41193587030): see `docs/testing/evidence.md`. Pinning of the actions to full
-commit SHAs is pending.
+First remote run (41193587030): see `docs/testing/evidence.md`. Every action is pinned to a full commit
+SHA with its tag in a comment; `tools/ci/check-pins.sh` enforces it. `tools/qemu/run-test.sh` passes
+the serial log and the QEMU exit code to `tests/framework/ktest-run.py` (33 pass, 35 failed tests,
+37 bugcheck; a log without a `KTEST` line fails). `make test-host` runs A10's host tests.
