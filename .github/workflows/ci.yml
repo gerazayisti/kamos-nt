@@ -47,7 +47,7 @@ jobs:
           KAMOS_JOBS="$(nproc)" toolchain/build-cross.sh
 
   build-test:
-    name: Build and boot (${{ matrix.cpu }})
+    name: Build and boot (${{ matrix.cpu }}, ${{ matrix.profile }})
     needs: toolchain
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -55,6 +55,7 @@ jobs:
       fail-fast: false
       matrix:
         cpu: [qemu64, max]
+        profile: [debug, release]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache/restore@v4
@@ -63,22 +64,26 @@ jobs:
           key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
           fail-on-cache-miss: true
       - run: toolchain/install-deps.sh
-      - run: tools/ci/build-test.sh ${{ matrix.cpu }}
+      - run: tools/ci/build-test.sh ${{ matrix.cpu }} ${{ matrix.profile }}
       - name: Keep the serial log and checksums
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: boot-${{ matrix.cpu }}
+          name: boot-${{ matrix.cpu }}-${{ matrix.profile }}
           path: |
-            build/serial.log
-            build/SHA256SUMS
+            build/${{ matrix.profile }}/serial.log
+            build/${{ matrix.profile }}/SHA256SUMS
           if-no-files-found: warn
 
   reproducible:
-    name: Reproducible build
+    name: Reproducible build (${{ matrix.profile }})
     needs: toolchain
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [debug, release]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache/restore@v4
@@ -87,7 +92,7 @@ jobs:
           key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
           fail-on-cache-miss: true
       - run: toolchain/install-deps.sh
-      - run: tools/ci/reproducible.sh
+      - run: tools/ci/reproducible.sh ${{ matrix.profile }}
 
   negative-selftest:
     name: The pipeline rejects a broken source
@@ -103,3 +108,34 @@ jobs:
           fail-on-cache-miss: true
       - run: toolchain/install-deps.sh
       - run: tools/ci/negative-selftest.sh
+
+  kernel-build-rules:
+    name: Kernel build rules (fixture)
+    needs: toolchain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: ~/opt/cross
+          key: cross-toolchain-${{ runner.os }}-${{ hashFiles('toolchain/versions.txt', 'toolchain/build-cross.sh') }}
+          fail-on-cache-miss: true
+      - run: toolchain/install-deps.sh
+      - run: tools/ci/kbuild-selftest.sh
+      - name: QEMU profiles
+        run: |
+          export PATH="$HOME/opt/cross/bin:$PATH"
+          make all iso CROSS=x86_64-elf-
+          tools/qemu/selftest.sh
+      - run: tools/ci/reproducible-negative.sh
+
+  static-analysis:
+    name: Static analysis and format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cppcheck clang-format
+      - run: tools/ci/static-analysis.sh --selftest
+      - run: tools/ci/static-analysis.sh

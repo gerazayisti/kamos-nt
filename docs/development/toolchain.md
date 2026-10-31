@@ -131,14 +131,39 @@ a run on a KVM host.
 
 ## Debug and release profiles
 
-Pending (needs kernel C and A01's change to `bugcheck.h`).
+`make KAMOS_DEBUG=1` is the debug profile (`-Og -g3 -DKAMOS_DEBUG=1`, output in `build/debug/`),
+`make KAMOS_DEBUG=0` the release profile (`-O2 -g -DKAMOS_DEBUG=0`, output in `build/release/`).
+Without `KAMOS_DEBUG` the debug flags are used and the output stays in `build/`. `ASSERT` and
+`VERIFY` follow `sdk/include/kamos/bugcheck.h` (RFC-0002). The flags are recorded in
+`build/<dir>/.kflags`, so a change of profile or of `KOPT` rebuilds the objects.
+`tools/ci/kbuild-selftest.sh` checks it on the fixture: the disassembly of `assert_probe` has two
+calls to `KeBugCheckEx` in debug and none in release; a failing `ASSERT` ends QEMU with exit 37 in
+debug and does not run in release (exit 33).
+
+## ISO and EFI
+
+The ISO is BIOS only (ADR-0001): the Makefile passes `-d /usr/lib/grub/i386-pc` to
+`grub-mkrescue`. Without `-d`, `grub-mkrescue` also builds an EFI image when
+`grub-efi-amd64-bin` is installed, as on the GitHub runner, and the volume serial number and the
+directory times of that FAT image come from the clock (observed: `386B-21AE` against `3011-2E92`
+for two builds three seconds apart). `GRUB_DIR=` (empty) restores that behaviour and
+`tools/ci/reproducible-negative.sh` uses it to prove that `reproducible.sh` notices.
 
 ## Format and static analysis
 
-Pending.
+`.clang-format` was derived from `sdk/include/kamos/*.h`; clang-format 18.1.3 still reports 86
+differences on those hand-aligned headers, so `tools/ci/static-analysis.sh` formats only
+`boot/`, `arch/x86_64/`, `hal/`, `ntoskrnl/` and the fixture. The same script runs cppcheck 2.13
+(`--std=c11 --platform=unix64 --enable=warning,portability`). `--selftest` plants a null
+dereference, an out-of-bounds write and an uninitialised read in
+`tools/ci/fixtures/analysis/bad.c` and a badly formatted file, and requires both tools to fail on
+them and to stay silent on the clean ones.
 
 ## CI
 
-The workflow is `.github/workflows/ci.yml`; logic lives in `tools/ci/`. The first remote run and
-the pinning of the actions are pending; see `docs/testing/evidence.md` for the outcome once
-observed.
+The workflow is `.github/workflows/ci.yml`; logic lives in `tools/ci/`. Jobs: licence headers,
+cross toolchain (cached), build and boot on `qemu64` and `max` for the debug and release profiles,
+reproducibility for both profiles, the broken-source self-test, the kernel build rules on the
+fixture (with the QEMU profile check and the reproducibility negative test), and static analysis.
+First remote run (41193587030): see `docs/testing/evidence.md`. Pinning of the actions to full
+commit SHAs is pending.

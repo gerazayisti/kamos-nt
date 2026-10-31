@@ -9,7 +9,26 @@ SHELL       := /bin/bash
 .DEFAULT_GOAL := all
 
 SRCDIR    := $(abspath .)
-BUILD     := build
+
+# Build profile. KAMOS_DEBUG=1 is the debug profile (ASSERT and VERIFY active, -Og -g3) and
+# KAMOS_DEBUG=0 the release profile (ASSERT removed, -O2 -g); see sdk/include/kamos/bugcheck.h.
+# Without KAMOS_DEBUG the debug flags are used and the output stays in build/. With it, the
+# output goes to build/debug or build/release (unless BUILD is given), so both can coexist.
+ifeq ($(origin KAMOS_DEBUG),undefined)
+KDEBUG  := 1
+KOPT_DEFAULT := -Og -g3
+BUILD   ?= build
+else ifeq ($(KAMOS_DEBUG),1)
+KDEBUG  := 1
+KOPT_DEFAULT := -Og -g3
+BUILD   ?= build/debug
+else ifeq ($(KAMOS_DEBUG),0)
+KDEBUG  := 0
+KOPT_DEFAULT := -O2 -g
+BUILD   ?= build/release
+else
+$(error KAMOS_DEBUG must be 0 or 1, not '$(KAMOS_DEBUG)')
+endif
 CROSS     ?= $(HOME)/opt/cross/bin/x86_64-elf-
 CC        := $(CROSS)gcc
 LD        := $(CROSS)ld
@@ -20,6 +39,11 @@ QEMU      ?= qemu-system-x86_64
 QEMU_CPU  ?= qemu64
 QEMU_MEM  ?= 512M
 TIMEOUT_S ?= 30
+# v0.1 boots with BIOS only (ADR-0001). Without -d, grub-mkrescue also builds an EFI image
+# whenever grub-efi-amd64-bin is installed (it is on the GitHub runner); that FAT image carries
+# the build time, so the ISO would differ from build to build (BOARD D14). EFI is milestone M-UEFI.
+# GRUB_DIR= (empty) restores the all-platform behaviour; tools/ci/reproducible-negative.sh uses it.
+GRUB_DIR  ?= /usr/lib/grub/i386-pc
 
 # Reproducible builds (ADR-0003).
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
@@ -31,7 +55,8 @@ CROSS_ROOT := $(abspath $(dir $(shell command -v $(CC) 2>/dev/null))/..)
 KPREFIXMAP := -ffile-prefix-map=$(CROSS_ROOT)=/cross
 KCFLAGS := -std=c11 -ffreestanding -fno-pic -fno-pie -fno-stack-protector \
            -mno-red-zone -mcmodel=kernel -mgeneral-regs-only -fno-omit-frame-pointer \
-           -Wall -Wextra -Werror -Wdate-time -ffile-prefix-map=$(SRCDIR)=. $(KPREFIXMAP) -Isdk/include
+           -Wall -Wextra -Werror -Wdate-time -ffile-prefix-map=$(SRCDIR)=. $(KPREFIXMAP) -Isdk/include \
+           -DKAMOS_DEBUG=$(KDEBUG)
 
 KERNEL := $(BUILD)/kernel.elf
 ISO    := $(BUILD)/kamos.iso
@@ -42,7 +67,7 @@ INITRD := $(BUILD)/initrd.tar
 KSRC_DIRS ?= boot arch/x86_64 hal ntoskrnl
 KSRC_C    := $(sort $(shell find $(KSRC_DIRS) -name '*.c' 2>/dev/null))
 KSRC_ASM  := $(sort $(shell find $(KSRC_DIRS) -name '*.asm' 2>/dev/null))
-KOPT      ?= -O2 -g
+KOPT      ?= $(KOPT_DEFAULT)
 # NASM has no prefix map: its DWARF names the absolute build directory, which breaks
 # reproducibility. Assembly gets symbols only. For line-level debugging of assembly in a private
 # build, pass KASMFLAGS="-g -F dwarf" (the image is then path dependent).
@@ -75,7 +100,7 @@ endif
 
 QEMU_BASE := $(QEMU) -machine q35 -cpu $(QEMU_CPU) -m $(QEMU_MEM) -cdrom $(ISO) -no-reboot
 
-.PHONY: all toolchain-check headers-check iso run run-serial debug test clean package
+.PHONY: FORCE all toolchain-check headers-check iso run run-serial debug test clean package
 
 all: $(KERNEL) headers-check
 
@@ -95,11 +120,19 @@ $(BUILD):
 $(BUILD)/entry.o: $(KERNEL_ASM) | $(BUILD)
 	$(NASM) -f elf64 -o $@ $<
 
-$(BUILD)/obj/%.c.o: %.c
+# The flags are recorded in a stamp that every object depends on, so that a change of profile or
+# of KOPT rebuilds them even though no source changed.
+$(BUILD)/.kflags: FORCE | $(BUILD)
+	@printf '%s\n' '$(KCFLAGS) | $(KOPT) | $(KASMFLAGS)' | cmp -s - $@ || \
+	  printf '%s\n' '$(KCFLAGS) | $(KOPT) | $(KASMFLAGS)' > $@
+
+FORCE:
+
+$(BUILD)/obj/%.c.o: %.c $(BUILD)/.kflags
 	@mkdir -p $(@D)
 	$(CC) $(KCFLAGS) $(KOPT) -MMD -MP -c -o $@ $<
 
-$(BUILD)/obj/%.asm.o: %.asm
+$(BUILD)/obj/%.asm.o: %.asm $(BUILD)/.kflags
 	@mkdir -p $(@D)
 	$(NASM) -f elf64 $(KASMFLAGS) -MD $(@:.o=.d) -MP -MT $@ -o $@ $<
 
@@ -126,7 +159,7 @@ $(ISO): $(KERNEL) $(INITRD) boot/grub/grub.cfg
 	cp $(KERNEL) $(INITRD) $(BUILD)/iso/boot/
 	cp boot/grub/grub.cfg $(BUILD)/iso/boot/grub/grub.cfg
 	find $(BUILD)/iso -exec touch -h -d @$(SOURCE_DATE_EPOCH) {} +
-	grub-mkrescue -o $@ $(BUILD)/iso --modification-date=$$(date -u -d @$(SOURCE_DATE_EPOCH) +%Y%m%d%H%M%S00) \
+	grub-mkrescue $(if $(GRUB_DIR),-d $(GRUB_DIR)) -o $@ $(BUILD)/iso --modification-date=$$(date -u -d @$(SOURCE_DATE_EPOCH) +%Y%m%d%H%M%S00) \
 	  -- -iso_nowtime =$(SOURCE_DATE_EPOCH) -alter_date_r b =$(SOURCE_DATE_EPOCH) / -- \
 	  2>$(BUILD)/grub-mkrescue.log || \
 	  { cat $(BUILD)/grub-mkrescue.log; exit 1; }

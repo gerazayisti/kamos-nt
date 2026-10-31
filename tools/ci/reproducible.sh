@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 The Kamos-NT Authors
 #
+# Usage: tools/ci/reproducible.sh [debug|release]
 # Builds the committed HEAD twice, in two worktrees with different paths and a pause in
 # between, and requires byte-identical kernel.elf and ISO (ADR-0003). Owner: A02.
 # Uncommitted changes are not part of the check: it works on HEAD.
@@ -11,8 +12,15 @@ cd "$(dirname "$0")/../.."
 export PATH="$HOME/opt/cross/bin:$PATH"
 cross=${CROSS:-x86_64-elf-}
 # KAMOS_MAKE_ARGS and KAMOS_BUILD_DIR let the same check run on the kernel-c fixture.
-margs=${KAMOS_MAKE_ARGS:-}
-bdir=${KAMOS_BUILD_DIR:-build}
+profile=${1:-default}   # default, debug or release
+case "$profile" in
+    default) pargs=;              pdir=build ;;
+    debug)   pargs=KAMOS_DEBUG=1; pdir=build/debug ;;
+    release) pargs=KAMOS_DEBUG=0; pdir=build/release ;;
+    *) echo "unknown profile $profile"; exit 2 ;;
+esac
+margs="$pargs ${KAMOS_MAKE_ARGS:-}"
+bdir=${KAMOS_BUILD_DIR:-$pdir}
 tmp=$(mktemp -d)
 a=$tmp/repro-first
 b=$tmp/another-path-second
