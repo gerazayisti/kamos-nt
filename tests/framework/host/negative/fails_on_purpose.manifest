@@ -1,0 +1,6 @@
+exit 35
+require neg test_check_fails FAIL
+require neg test_eq_fails FAIL
+require neg test_require_stops FAIL
+require neg test_passes PASS
+line test_eq_fails FAIL .*0x3 vs 0x4

@@ -1,0 +1,4 @@
+exit=33
+verdict=FAIL
+manifest=m_require.manifest
+reason=is missing

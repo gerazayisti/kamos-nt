@@ -1,0 +1,5 @@
+exit=33
+verdict=FAIL
+manifest=m_ratio.manifest
+stamped=1
+reason=outside

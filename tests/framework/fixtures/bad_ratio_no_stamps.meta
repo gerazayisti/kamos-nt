@@ -1,0 +1,4 @@
+exit=33
+verdict=FAIL
+manifest=m_ratio.manifest
+reason=no host timestamps
