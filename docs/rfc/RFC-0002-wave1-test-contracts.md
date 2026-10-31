@@ -102,3 +102,16 @@ exit value `0x12` for the fatal cases.
 | D15 (ADR-0007) | Read the new sentence | Fixed: bit 28 "MUST be 0 in [MS-ERREF]" matches the page text; `KAMOS_ERROR_CODE` keeps bit 28 clear (`0xE00A0000`). |
 | D18 (ADR-0011) | Read the new row | Fixed: it says `gs:[0x58]` is not named by the public `winternl.h` page and is fixed by the code our compilers emit, which matches what clang emitted (`movq %gs:88`). |
 | `ob.h:75` | Read | Fixed for `ObInsertHandle`. Still open: `ObDuplicateHandle` does not say that `DesiredAccess` cannot exceed the source handle's granted mask. |
+
+## Addendum 3: timer oracle band under QEMU TCG (decision A01, 2026-11-01, defect D21)
+
+Measured by A10 over 20 runs of the full suite on QEMU TCG (qemu64): 18 runs inside 0.99 to 1.01,
+one at 1.0105, one failing without a ratio line. Range of the others: 0.9918 to 1.0073. TCG on a
+loaded WSL2 host is not a clock reference.
+
+Decision:
+
+- Under QEMU TCG the host/guest ratio band is **0.98 to 1.02**. The 1% band (0.99 to 1.01) stays the
+  target for KVM and real hardware (milestone M-HW) and is not abandoned.
+- The scenario prints the ratio, the host span and the guest span on every run, also on failure.
+- A band is widened only with a measurement and a decision recorded here, never to make a red run green.
