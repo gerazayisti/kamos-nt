@@ -74,5 +74,18 @@ for cpu in qemu64 max; do
     kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
 done
 
+# run-test.sh must judge the log, not only the QEMU exit code. An old-style placeholder prints
+# KTEST-END pass=1 but no KTEST line and exits 33: the judge must call that a failure.
+echo "--- run-test.sh verdicts"
+old=$(mktemp -d)
+grep -v 'KTEST boot magic PASS' tools/image/placeholder/entry.asm >"$old/entry.asm"
+export PATH="$HOME/opt/cross/bin:$PATH"
+make BUILD="$old/b" KERNEL_ASM="$old/entry.asm" CROSS=x86_64-elf- iso >/dev/null 2>&1
+out=$(tools/qemu/run-test.sh "$old/b/kamos.iso" "$old/serial.log" 20 qemu64 512M 2>&1); rc=$?
+if [ "$rc" -ne 0 ] && has "$out" "qemu exit code: 33" && has "$out" "no test ran"; then
+    ok "run-test: exit 33 with no KTEST line is a failure ('no test ran')"
+else bad "run-test accepted a log without KTEST line (rc=$rc)"; echo "$out" | tail -5; fi
+rm -rf "$old"
+
 [ "$fail" -eq 0 ] && echo "qemu-selftest: PASS" || echo "qemu-selftest: FAIL"
 exit $fail

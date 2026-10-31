@@ -184,3 +184,6 @@ package: $(ISO)
 
 clean:
 	rm -rf $(BUILD)
+
+# Host unit tests with sanitizers (owner A10): make test-host, make test-framework-selftest.
+include tests/framework/host.mk
