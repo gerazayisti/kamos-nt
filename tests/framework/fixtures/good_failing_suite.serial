@@ -1,0 +1,2 @@
+KTEST mm alloc FAIL t.c:9 a == b (0x1 vs 0x2)
+KTEST-END pass=0 fail=1 skip=0

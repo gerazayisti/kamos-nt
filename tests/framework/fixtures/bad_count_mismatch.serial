@@ -1,0 +1,2 @@
+KTEST mm alloc PASS
+KTEST-END pass=2 fail=0 skip=0

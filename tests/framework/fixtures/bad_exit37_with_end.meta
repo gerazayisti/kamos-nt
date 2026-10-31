@@ -1,0 +1,4 @@
+exit=37
+verdict=FAIL
+manifest=m_fatal.manifest
+reason=exit 37 (bug check) but

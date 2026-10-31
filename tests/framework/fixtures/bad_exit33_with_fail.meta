@@ -1,0 +1,3 @@
+exit=33
+verdict=FAIL
+reason=exit 33 but

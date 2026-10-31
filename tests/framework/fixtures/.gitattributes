@@ -1,0 +1,2 @@
+# Fixtures are byte-exact: good_crlf.serial must keep its CRLF line ends.
+* -text

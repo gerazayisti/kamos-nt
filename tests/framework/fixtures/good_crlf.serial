@@ -1,0 +1,5 @@
+boot banner
+KTEST mm alloc PASS
+KTEST mm free PASS
+KTEST mm map PASS
+KTEST-END pass=3 fail=0 skip=0

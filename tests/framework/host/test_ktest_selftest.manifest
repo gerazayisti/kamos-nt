@@ -1,0 +1,6 @@
+# Skips are declared, never silent.
+require ktest test_check_true
+require ktest test_check_eq
+require ktest test_require_returns
+require ktest test_skip_with_reason SKIP
+require ktest test_pte_oracle
