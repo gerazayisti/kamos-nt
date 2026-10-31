@@ -10,7 +10,7 @@
  *     section .kfixup
  *         dq copy_fault_instruction, copy_fault_return
  * (NASM) or with a C macro that does the same. The section is read-only; the linker script
- * exports __kfixup_start and __kfixup_end.
+ * exports __kfixup_start and __kfixup_count (the number of entries).
  */
 #ifndef KAMOS_FIXUP_H
 #define KAMOS_FIXUP_H

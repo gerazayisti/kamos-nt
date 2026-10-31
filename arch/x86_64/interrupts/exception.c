@@ -11,7 +11,8 @@
 #include "fixup.h"
 
 extern const KFIXUP_ENTRY __kfixup_start[];
-extern const KFIXUP_ENTRY __kfixup_end[];
+/* Absolute linker symbol: its ADDRESS is the number of entries (kernel.ld). */
+extern const char __kfixup_count[];
 
 KI_EXCEPTION_RECORD KiLastException;
 char                KiLastExceptionLine[256];
@@ -96,7 +97,7 @@ void KiExceptionDispatch(KTRAP_FRAME *Tf, KIRQL Interrupted)
     if (v != 2 && v != 8 && v != 18) {
         fix = FindTestSlot(Tf->Rip, KI_FIXUP_CLASS_EXPECT);           /* any vector, any level */
         if (fix == NULL && v == 14 && Interrupted == PASSIVE_LEVEL) { /* ADR-0013 rule 1 */
-            fix = KiFindFixup(__kfixup_start, (size_t)(__kfixup_end - __kfixup_start), Tf->Rip);
+            fix = KiFindFixup(__kfixup_start, (size_t)(uintptr_t)__kfixup_count, Tf->Rip);
             if (fix == NULL) {
                 fix = FindTestSlot(Tf->Rip, KI_FIXUP_CLASS_FIXUP);
             }

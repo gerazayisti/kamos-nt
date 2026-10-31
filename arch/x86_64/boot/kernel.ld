@@ -52,7 +52,10 @@ SECTIONS
         __kfixup_start = .;
         KEEP(*(.kfixup))
         __kfixup_end = .;
+        /* number of 16-byte entries, so C never subtracts two linker symbols */
+        __kfixup_count = (__kfixup_end - __kfixup_start) / 16;
     } :rodata
+    ASSERT((__kfixup_end - __kfixup_start) % 16 == 0, ".kfixup must hold whole 16-byte entries")
     . = ALIGN(4K);
     __rodata_end = .;
 
