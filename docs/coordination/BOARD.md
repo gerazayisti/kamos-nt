@@ -13,6 +13,16 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | P0-07 | `make test` passes (QEMU exit 33) | A02, A10 | Done with the cross toolchain, awaiting A10 replay | | evidence 2026-10-31 |
 | P0-08 | Two builds give identical `kernel.elf` and ISO | A02 | Done (ISO dates pinned to SOURCE_DATE_EPOCH), awaiting A10 replay from a clean checkout | | evidence 2026-10-31 |
 | P0-09 | CI workflow (debug, release, qemu64, max) | A02 | Planned | Remote host not chosen | |
-| P0-10 | ADR consistency review | A10 | Planned | P0-01 | |
-| P0-11 | Threat model skeleton, provenance audit | A10 | Planned | | |
+| P0-10 | ADR consistency review | A10 | Reviewed 2026-10-31, **not signed**: contradictions found (D01 to D05) | A01 decisions on D01 to D05 | `docs/reports/p0-A10.md` |
+| P0-11 | Threat model skeleton, provenance audit | A10 | Done (skeleton and SPDX audit); open items D07, D08 | | `docs/security/threat-model.md`, `docs/compatibility/provenance.md` |
+| D01 | IRQL in CR8 does nothing under the PIC (ADR-0009 vs ADR-0001). Blocks Wave 1 gate | A01, A03, A05 | Open (High) | | `docs/reports/p0-A10.md` |
+| D02 | `SeAccessCheck` unreachable from the Ob open path; no namespace insert. Blocks Wave 3 | A06, A01 | Open (High) | | same |
+| D03 | Missing contracts: boot info (A03), address spaces (A04), handle table lifecycle (A06, A07) | A03, A04, A06, A07 | Open (High) | | same |
+| D04 | `ke.h`: no DPC or work item, no `KeInitializeEvent`, no lock rank, no blocking lock | A05, A01 | Open (High) | | same |
+| D05 | ADR-0007, ADR-0009 vs headers: NULL-returning APIs, `STATUS_CANCELLED`, `KeBugCheckEx`, wait level | A01 | Open (Medium) | | same |
+| D06 | NTSTATUS values not checked against MS-ERREF; "customer bit never used" overclaim | A01, A10 | Open (Medium) | | same |
+| D07 | Chromium stub citation has no revision; not replayable | A01, A10 | Open (Medium) | | same |
+| D08 | Legal review: Windows VM licence terms, SDK header redistribution | Founder | Open (Medium) | A lawyer | same |
+| D09 | Referenced files missing (table.def, hardware.md, overview.md, toolchain.md, CI, matrix pages) | A01, A02, A10 | Open (Medium) | | same |
+| D10 | `ASSERT` always on; `MmVirtualToPhysical` has no error value | A01, A04 | Open (Low) | | same |
 | P0-12 | Phase 0 gate file | A01 | Planned | P0-05 to P0-10 | |
