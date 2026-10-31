@@ -84,10 +84,13 @@ NTSTATUS ObDuplicateHandle(HANDLE_TABLE *Source, HANDLE SourceHandle, HANDLE_TAB
 /*
  * Namespace lookup, case-insensitive and case-preserving (ADR-0011). PASSIVE_LEVEL.
  * Maps generic rights in DesiredAccess with the type's GenericMapping, then calls
- * SeAccessCheck with SeGetCurrentToken(). On success the object is referenced for the caller.
+ * SeAccessCheck with SeGetCurrentToken(). On success the object is referenced for the caller
+ * and *GrantedAccess holds the rights actually granted: that is the value to pass to
+ * ObInsertHandle when the caller opens a handle.
  * Errors: STATUS_OBJECT_NAME_NOT_FOUND, STATUS_ACCESS_DENIED, STATUS_INVALID_PARAMETER.
  */
 NTSTATUS ObReferenceObjectByName(const UNICODE_STRING *Path, OBJECT_TYPE *Type,
-                                 ACCESS_MASK DesiredAccess, void **Object);
+                                 ACCESS_MASK DesiredAccess, ACCESS_MASK *GrantedAccess,
+                                 void **Object);
 
 #endif /* KAMOS_OB_H */

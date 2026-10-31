@@ -89,7 +89,8 @@ void KeReleaseMutex(KMUTEX *Mutex);
 
 /*
  * Waits on an event or mutex (any object that starts with a DISPATCHER_HEADER).
- * Timeout100ns: NULL waits forever, 0 polls. Returns STATUS_SUCCESS or STATUS_TIMEOUT.
+ * Timeout100ns is a relative interval in 100 ns units and never negative (a negative value is
+ * STATUS_INVALID_PARAMETER): NULL waits forever, 0 polls. Returns STATUS_SUCCESS or STATUS_TIMEOUT.
  * PASSIVE_LEVEL, or up to DISPATCH_LEVEL when the timeout is 0.
  */
 NTSTATUS KeWaitForSingleObject(void *Object, const LONG64 *Timeout100ns);
@@ -142,7 +143,7 @@ KTHREAD *KeGetCurrentThread(void);
 /* Terminates the calling thread. Its stack is freed by another thread. Never returns. */
 _Noreturn void KeExitThread(void);
 
-/* Sleeps the current thread. PASSIVE_LEVEL. */
+/* Sleeps the current thread. Interval100ns is relative and not negative. PASSIVE_LEVEL. */
 NTSTATUS KeDelayExecutionThread(LONG64 Interval100ns);
 
 #endif /* KAMOS_KE_H */
