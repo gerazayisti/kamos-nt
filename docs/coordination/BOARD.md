@@ -12,7 +12,7 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | P0-06 | `make iso` builds the placeholder ISO | A02 | Done with the cross toolchain, awaiting A10 replay | | evidence 2026-10-31 |
 | P0-07 | `make test` passes (QEMU exit 33) | A02, A10 | Done with the cross toolchain, awaiting A10 replay | | evidence 2026-10-31 |
 | P0-08 | Two builds give identical `kernel.elf` and ISO | A02 | Done (ISO dates pinned to SOURCE_DATE_EPOCH), awaiting A10 replay from a clean checkout | | evidence 2026-10-31 |
-| P0-09 | CI workflow | A02 | Ran on GitHub 2026-10-31 (run 41193587030): 5 jobs, 4 green. **`Reproducible build` red: `kamos.iso` differs between two builds on the runner** (`kernel.elf` identical). Diagnostics added, awaiting a second run | Second run | evidence 2026-10-31 |
+| P0-09 | CI workflow | A02 | Ran on GitHub (run 41193587030): 4 of 5 jobs green. Red proof done 2026-10-31 (run 41197225495): build jobs go red on a broken source, branch deleted. D14 fix merged locally (2e2bd47), not pushed | Push of main, then confirm D14 and profiles on a remote run | evidence 2026-10-31 |
 | P0-09b | Pin the actions to full commit SHAs after the first remote run | A02 | Planned | P0-09 remote run | |
 | P0-10 | ADR consistency review | A10 | Reviewed 2026-10-31, **not signed**: contradictions found (D01 to D05), all five now decided by A01 in RFC-0001 | A10 re-review of RFC-0001 by an independent session | `docs/reports/p0-A10.md` |
 | P0-11 | Threat model skeleton, provenance audit | A10 | Done (skeleton and SPDX audit); open items D07, D08 | | `docs/security/threat-model.md`, `docs/compatibility/provenance.md` |
