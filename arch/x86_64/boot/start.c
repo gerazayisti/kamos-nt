@@ -36,9 +36,21 @@ _Noreturn void KiStartKernel(ULONG MultibootMagic, ULONG MbiPhysical)
 
     HalDebugConsoleInit();
     kprintf("Kamos-NT kernel 0.1.0 (%s) x86_64\n", KAMOS_DEBUG ? "debug" : "release");
+    ArchInitGdt();
+    ArchInitIdt(); /* from here on a fault prints a line instead of resetting the machine */
+    /*
+     * The loader may place its information structure in a gap between two segments of the image
+     * (seen in the release build: MBI at 0x10d5a0, inside [__kernel_phys_start,
+     * __kernel_phys_end)), so it must be read through the identity map BEFORE
+     * ArchFinishBootMappings removes the alias.
+     */
+    HalInitializeBootInformation(MultibootMagic, MbiPhysical);
     ArchFinishBootMappings();
     (void)ArchInitCpuFeatures();
-    HalInitializeBootInformation(MultibootMagic, MbiPhysical);
+    HalpInitPic();
+    HalpInitTimer(); /* leaves interrupts enabled at PASSIVE_LEVEL */
+    kprintf("TSC %lu Hz (calibrated on interrupt-driven PIT ticks)\n", (unsigned long)HalpTscHz());
+    kprintf("calibration: %lu outlier window(s) of 91 ignored\n", (unsigned long)HalpLostTicks);
 
     KtMain();
 }

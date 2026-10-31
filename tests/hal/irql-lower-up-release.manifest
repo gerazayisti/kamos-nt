@@ -1,0 +1,6 @@
+# Same source in a release build: ASSERT is removed, the level is clamped, the boot goes on (exit 33).
+# Negative control of the debug manifest.
+exit 33
+require scenario fell_through
+forbid ASSERT FAILED
+forbid KAMOS STOP

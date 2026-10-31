@@ -27,7 +27,7 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | D09 | Referenced files missing (table.def, hardware.md, overview.md, toolchain.md, CI, matrix pages) | A01, A02, A10 | Recounted at c373958 by A10 (list in `docs/reports/p0-A10-rereview.md`); awaiting A01/A02 to create or reword | | same |
 | D10 | `ASSERT` always on; `MmVirtualToPhysical` has no error value | A01, A04 | Open (Low) | | same |
 | P0-12 | Phase 0 gate file | A01 | Written 2026-10-31: approved with reservations R1 to R5, **A10 has not signed** | A10 signature (re-review W1-05) | `docs/reports/gate-phase0.md` |
-| W1-01 | Methodology note, A03 | A03 | Assigned | | `docs/coordination/tasks/W1-A03.md` |
+| W1-01 | Methodology note, A03 | A03 | Written (with addendum 2026-10-31), awaiting A01/A10 review | | `docs/coordination/methodology/W1-A03.md` |
 | W1-02 | Methodology note, A02 | A02 | **Methodology accepted** with conditions C1 to C3 | | `docs/coordination/methodology/W1-A02-review.md` |
 | W1-03 | Methodology note, A04 | A04 | Assigned | | `docs/coordination/tasks/W1-A04.md` |
 | W1-04 | Methodology note, A10 | A10 | **Methodology accepted** with RFC-0002 decisions; contracts and harness before replay | | `docs/coordination/methodology/W1-A10-review.md` |
@@ -35,8 +35,8 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | W1-06 | Kernel build rules in the Makefile | A02 | Done, merged (`kbuild-selftest` 12/12 reviewed by A01); real-kernel use waits for A03's first source | | evidence 2026-10-31 (A02 rows) |
 | W1-07 | Host unit-test harness with ASan and UBSan | A10 | Done: `tests/framework/host/run-host-tests.sh`. `make test-host` waits for A02's include line (inbox A02) | A02 include | `tests/framework/`, evidence 2026-10-31 |
 | W1-08 | Oracles for the Phase 1 and 2 criteria (timer, exceptions, level masking) | A10 | Done (document): `docs/testing/oracles-wave1.md`; timer method noise measured | | `docs/testing/oracles-wave1.md` |
-| W1-09 | Phase 1: boot, console, boot information | A03 | Assigned | W1-01 accepted, W1-06 | |
-| W1-10 | Phase 2: GDT, IDT, exceptions, PIC, PIT, software levels | A03 | Assigned | W1-09 | |
+| W1-09 | Phase 1: boot, console, boot information | A03 | Done on the branch `agent/a03/p1-boot`, not merged, not verified by A10 | A10 replay | `docs/reports/p2-A03.md` |
+| W1-10 | Phase 2: GDT, IDT, exceptions, PIC, PIT, software levels | A03 | Done on the branch `agent/a03/p1-boot`, not merged, not verified by A10 | A10 replay | `docs/reports/p2-A03.md` |
 | W1-11 | Host-side frame allocator, page tables, pool | A04 | Assigned | W1-03 accepted, W1-07 | |
 | W1-12 | Split the cache key: host tool versions out of `versions.txt` (C1) | A02 | Done, merged. Note: `check-toolchain.sh` reads `gcc=` from `versions.txt`, which stays there | | `toolchain/host-tools.txt` |
 | W1-13 | `ASSERT` per build profile (D10): debug-only `ASSERT`, `VERIFY`, security checks never removed | A01 (header), A02 (`KAMOS_DEBUG` switch) | Header done 2026-10-31; `KAMOS_DEBUG` switch pending (A02, task R) | | `sdk/include/kamos/bugcheck.h` |
@@ -46,5 +46,5 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | D14 | ISO not reproducible on the GitHub runner (identical locally, 65 s apart and with another TZ). Cause unknown | A02 | Fixed and confirmed on GitHub (run 41208173101) | Needs the next remote run | run 41193587030 |
 | D18 | ADR-0011 `gs:[0x58]` (A10's report calls it D14) is not documented by the public `winternl.h` TEB page; clang emits it for `__declspec(thread)` | A01 | Fixed 2026-10-31 (A01, awaiting A10 check) | | `docs/compatibility/provenance.md` |
 | D15 | ADR-0007 does not mention the reserved N bit (bit 28, MUST be 0 in MS-ERREF) | A01 | Fixed 2026-10-31 (A01, awaiting A10 check) | | `docs/compatibility/provenance.md` D06 |
-| D16 | RFC-0002 item 8: TSC calibrated on the PIT; a busy-polling guest sees QEMU PIT time at about 0.8 of host time; calibration shape is a design risk | A03 | Open (Medium, design obligation) | | `docs/testing/oracles-wave1.md` section 5 |
+| D16 | RFC-0002 item 8: TSC calibrated on the PIT; a busy-polling guest sees QEMU PIT time at about 0.8 of host time; calibration shape is a design risk | A03 | Addressed by A03 (interrupt-driven calibration, median estimator); 10 of 10 boots in 0.996 to 1.004; awaiting A10 replay | A10 | `docs/reports/p2-A03.md` |
 | D17 | `run-test.sh` accepts only exit 33; the placeholder prints a constant `KTEST-END` with no `KTEST` line, which the parser rejects | A02 | Fixed (A02, merged 4a5f486) | | `docs/reports/p0-A10-rereview.md` |

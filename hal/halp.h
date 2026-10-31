@@ -128,6 +128,120 @@ void ArchFinishBootMappings(void);
 
 _Noreturn void KiStartKernel(ULONG MultibootMagic, ULONG MbiPhysical);
 
+/* ---- Traps (arch/x86_64/interrupts) ---------------------------------------------------------- */
+
+/*
+ * Frame built by the stubs in stubs.asm. Push order: the CPU pushes SS, RSP, RFLAGS, CS, RIP (and
+ * an error code for vectors 8, 10 to 14, 17, 21, 29, 30; the stub pushes 0 for the others), then
+ * the stub pushes the vector, then RAX, RBX, RCX, RDX, RSI, RDI, RBP, R8 to R15. The first field
+ * is therefore the last register pushed.
+ */
+typedef struct _KTRAP_FRAME {
+    ULONG64 R15, R14, R13, R12, R11, R10, R9, R8;
+    ULONG64 Rbp, Rdi, Rsi, Rdx, Rcx, Rbx, Rax;
+    ULONG64 Vector;
+    ULONG64 ErrorCode;
+    ULONG64 Rip, Cs, Rflags, Rsp, Ss;
+} KTRAP_FRAME;
+KAMOS_STATIC_ASSERT(sizeof(KTRAP_FRAME) == 22 * 8, "KTRAP_FRAME must match stubs.asm");
+
+#define KI_SELECTOR_KCODE  0x08u
+#define KI_SELECTOR_KDATA  0x10u
+#define KI_SELECTOR_TSS    0x30u
+#define KI_VECTOR_IRQ_BASE 0x20u
+
+#define KI_IST_STACK_SIZE 8192u
+
+extern UCHAR         KiDoubleFaultStack[KI_IST_STACK_SIZE];  /* IST1 */
+extern UCHAR         KiNmiStack[KI_IST_STACK_SIZE];          /* IST2 */
+extern UCHAR         KiMachineCheckStack[KI_IST_STACK_SIZE]; /* IST3 */
+extern const ULONG64 KiIsrTable[256];
+
+void ArchInitGdt(void);
+void ArchInitIdt(void);
+
+BOOLEAN     KiVectorHasErrorCode(ULONG Vector);
+const char *KiExceptionName(ULONG Vector, char *Scratch, SIZE_T ScratchSize);
+
+/* Common C entry of every stub. */
+void KiTrapDispatch(KTRAP_FRAME *Frame);
+void KiExceptionDispatch(KTRAP_FRAME *Frame, KIRQL InterruptedIrql);
+void HalpIrqDispatch(KTRAP_FRAME *Frame, KIRQL InterruptedIrql);
+
+/* What the last exception looked like, for the tests (the same facts as the EXC line). */
+typedef struct _KI_EXCEPTION_RECORD {
+    ULONG   Count;
+    ULONG   Vector;
+    BOOLEAN HasErrorCode;
+    BOOLEAN Resumed;
+    KIRQL   InterruptedIrql;
+    ULONG64 ErrorCode;
+    ULONG64 Rip, Cs, Rflags, Rsp, Cr2;
+    ULONG64 FrameAddress; /* address of the trap frame: shows which stack the handler ran on */
+} KI_EXCEPTION_RECORD;
+extern KI_EXCEPTION_RECORD KiLastException;
+extern char                KiLastExceptionLine[256];
+
+/*
+ * Fault fixups (ADR-0013). The static table is the linker section .kfixup, filled by the user copy
+ * routines (A04) with pairs of 64-bit addresses {fault rip, resume rip}. The match is on the exact
+ * address. Test registrations (at most KI_TEST_FIXUP_SLOTS) come in two classes:
+ *  FIXUP  behaves like the static table: #PF only, only when the interrupted code ran at
+ *         PASSIVE_LEVEL;
+ *  EXPECT any vector, any level; only to test the exception decoder.
+ */
+#define KI_TEST_FIXUP_SLOTS   8
+#define KI_FIXUP_CLASS_FIXUP  1
+#define KI_FIXUP_CLASS_EXPECT 2
+BOOLEAN KiTestFixupRegister(ULONG64 FaultRip, ULONG64 ResumeRip, int Class);
+void    KiTestFixupClear(void);
+
+/* ---- Per-CPU state, execution levels (hal/irql.c) -------------------------------------------- */
+
+#define HALP_PENDING_DISPATCH 0x1u
+
+typedef struct _HALP_CPU {
+    KIRQL   Irql;            /* software level, ADR-0009 */
+    UCHAR   SoftActive;      /* a software interrupt is running (depth 1) */
+    ULONG   Pending;         /* HALP_PENDING_* bits */
+    ULONG   IntSectionDepth; /* open HalDisableInterrupts sections */
+    ULONG64 SoftEntries;     /* times the dispatch handler ran */
+    ULONG   SoftMaxDepth;    /* highest nesting seen (must stay 1) */
+    ULONG   SoftDepth;
+} HALP_CPU;
+
+extern HALP_CPU HalpCpu0;
+
+static inline HALP_CPU *HalpCurrentCpu(void)
+{
+    return &HalpCpu0; /* one CPU in v0.1; SMP changes this function only */
+}
+
+/*
+ * Requests the dispatch software interrupt (DPCs, scheduler). Any level. It runs when the level
+ * is, or drops, below DISPATCH_LEVEL; never nested (depth 1).
+ */
+void HalRequestDispatchInterrupt(void);
+/* The routine the software interrupt runs, at DISPATCH_LEVEL with IF set. A05 installs it. */
+typedef void (*HAL_DISPATCH_HANDLER)(void);
+void HalSetDispatchInterruptHandler(HAL_DISPATCH_HANDLER Handler);
+/* Delivers pending software interrupts if the level allows (used at the end of an IRQ). */
+void HalpDeliverSoftwareInterrupts(void);
+
+/* ---- PIC, PIT, time (hal/pic.c, hal/time.c) ----------------------------------------------------
+ */
+
+void   HalpInitPic(void);
+USHORT HalpPicReadRegister(BOOLEAN Isr); /* OCW3 read: ISR if true, else IRR; master low byte */
+ULONG  HalpPicSpuriousCount(ULONG Line);
+void   HalpInitTimer(void); /* programs the PIT, calibrates the TSC, returns with IF set */
+extern ULONG64 HalpLostTicks;
+ULONG64        HalpCalibrationSample(ULONG I);
+ULONG64        HalpTickCount(void);
+ULONG64        HalpTscHz(void);
+ULONG64        HalpTickPeriod100ns(void);
+USHORT         HalpPitReadCounter(void);
+
 /* ---- Console and formatted output (hal/console.c) ---------------------------------------- */
 
 int  kprintf(const char *Format, ...) __attribute__((format(printf, 1, 2)));

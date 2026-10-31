@@ -66,7 +66,19 @@ void KtPrintLine(const char *Suite, const char *Name, const char *Result, const 
 extern const KTX_CASE KtBootCases[];
 extern const size_t   KtBootCaseCount;
 
+extern const KTX_CASE KtExcCases[];
+extern const size_t   KtExcCaseCount;
+extern const KTX_CASE KtIrqlCases[];
+extern const size_t   KtIrqlCaseCount;
+
 /* Scenarios that end in a bug check; each runs in its own boot. */
 void KtScenarioFellThrough(const char *Name);
+void KtScenarioPfNoFixup(void);
+void KtScenarioPfOffByOne(void);
+void KtScenarioPfDevice(void);
+void KtScenarioDoubleFault(void);
+void KtScenarioRaiseDown(void);
+void KtScenarioLowerUp(void);
+void KtScenarioLowerInSection(void);
 
 #endif /* KAMOS_KTEST_INTERNAL_H */

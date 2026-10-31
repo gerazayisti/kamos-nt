@@ -150,18 +150,44 @@ static void ScenarioAssert(void)
     KtScenarioFellThrough("assert");
 }
 
+/* Diagnostic, not a test: prints the TSC deltas between the calibration ticks, in kilocycles. */
+static void ScenarioCalDump(void)
+{
+    for (ULONG i = 2; i < 102; i += 10) {
+        char    line[200];
+        kt__buf b = {line, sizeof line, 0};
+
+        line[0] = '\0';
+        kt__cat(&b, "caldump");
+        for (ULONG k = i; k < i + 10; k++) {
+            kt__cat(&b, " ");
+            kt__cat_u64(&b, (HalpCalibrationSample(k + 1) - HalpCalibrationSample(k)) / 1000, 0);
+        }
+        kprintf("%s\n", line);
+    }
+    HalHaltSystem(HAL_EXIT_TESTS_PASSED);
+}
+
 static const struct {
     const char *Name;
     void (*Run)(void);
 } Scenarios[] = {
+    {"caldump", ScenarioCalDump},
     {"assert", ScenarioAssert},
+    {"pf-nofixup", KtScenarioPfNoFixup},
+    {"pf-offbyone", KtScenarioPfOffByOne},
+    {"pf-device", KtScenarioPfDevice},
+    {"df", KtScenarioDoubleFault},
+    {"irql-raise-down", KtScenarioRaiseDown},
+    {"irql-lower-up", KtScenarioLowerUp},
+    {"irql-lower-section", KtScenarioLowerInSection},
 };
 
 _Noreturn void KtMain(void)
 {
     char      sel[64];
     int       n = HalpFwCfgReadFile("opt/kamos/test", sel, sizeof sel);
-    KTX_TABLE tables[1];
+    KTX_TABLE tables[3];
     unsigned  failed;
 
     if (n == -2) {
@@ -182,6 +208,10 @@ _Noreturn void KtMain(void)
     }
     tables[0].Cases = KtBootCases;
     tables[0].Count = KtBootCaseCount;
+    tables[1].Cases = KtExcCases;
+    tables[1].Count = KtExcCaseCount;
+    tables[2].Cases = KtIrqlCases;
+    tables[2].Count = KtIrqlCaseCount;
     failed          = RunTables(tables, KAMOS_ARRAY_SIZE(tables));
     HalHaltSystem(failed == 0 ? HAL_EXIT_TESTS_PASSED : HAL_EXIT_TESTS_FAILED);
 }
