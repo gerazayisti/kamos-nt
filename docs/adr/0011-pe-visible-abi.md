@@ -15,7 +15,7 @@ publicly documented and must match exactly; everything behind an API stays a Kam
 |---|---|---|
 | User calling convention | Microsoft x64: `rcx`, `rdx`, `r8`, `r9`, 32-byte shadow space, 16-byte stack alignment | Microsoft Learn, "x64 calling convention" |
 | Exceptions | `.pdata`/`.xdata` unwind tables, `RtlVirtualUnwind`, `RtlLookupFunctionEntry` | Microsoft Learn, "x64 exception handling" |
-| TEB and PEB | Only the fields compiled code reads directly, at their documented offsets: `NT_TIB`, self pointer at `gs:[0x30]`, TLS pointer at `gs:[0x58]`, stack limits, `TlsSlots`, PEB `Ldr` and `ProcessParameters` | `winnt.h`, `winternl.h` from public SDK headers, code emitted by our own compilers |
+| TEB and PEB | Only the fields compiled code reads directly, at their documented offsets: `NT_TIB`, self pointer at `gs:[0x30]`, TLS pointer at `gs:[0x58]` (not named by the public `winternl.h` TEB page; it is the offset our own x64 compiler targets emit for `__declspec(thread)`, so it is fixed by the code we generate, not by a Microsoft document), stack limits, `TlsSlots`, PEB `Ldr` and `ProcessParameters` | `winnt.h`, `winternl.h` from public SDK headers, code emitted by our own compilers |
 | TLS | TLS callbacks, `__declspec(thread)`, `TlsAlloc` | PE/COFF specification, `.tls` section |
 | Error codes | `NTSTATUS` and Win32 error values identical; last error stored in the TEB | `ntstatus.h`, `winerror.h` |
 | Handles | Opaque, multiples of 4, index plus generation, never a pointer | Microsoft Learn, kernel objects |

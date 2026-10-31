@@ -72,6 +72,7 @@ NTSTATUS ObInheritHandles(HANDLE_TABLE *Source, HANDLE_TABLE *Target);
  * When two tables are locked together (duplicate), the lock with the lower address is taken
  * first (docs/architecture/lock-order.md).
  */
+/* GrantedAccess must be within the type's ValidAccessMask: otherwise STATUS_INVALID_PARAMETER. */
 NTSTATUS ObInsertHandle(HANDLE_TABLE *Table, void *Object, ACCESS_MASK GrantedAccess,
                         ULONG Attributes, HANDLE *Handle);
 NTSTATUS ObReferenceObjectByHandle(HANDLE_TABLE *Table, HANDLE Handle,

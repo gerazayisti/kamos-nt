@@ -9,7 +9,7 @@
 - Every kernel function that can fail returns `NTSTATUS`, a signed 32-bit integer defined in
   `sdk/include/kamos/status.h`.
 - Bit layout and numeric values follow the publicly documented NTSTATUS format
-  (severity in bits 31–30, customer bit 29, facility in bits 27–16, code in bits 15–0), so
+  (severity in bits 31–30, customer bit 29, reserved N bit 28 (MUST be 0 in [MS-ERREF]; a status with bit 28 set is invalid), facility in bits 27–16, code in bits 15–0), so
   that PE programs see the values they expect (ADR-0011). Values are taken one by one from
   public documentation, never from decompiled binaries.
 - `NT_SUCCESS(s)` is `((NTSTATUS)(s) >= 0)`.

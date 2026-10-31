@@ -20,7 +20,7 @@
 | `rcx`, `r11` | Clobbered by the CPU (return RIP, RFLAGS) |
 | `rax` (return) | `NTSTATUS` (ADR-0007) |
 
-- User stubs in `ntdll` have exactly this shape, required by the Chromium sandbox
+- User stubs in `ntdll` have exactly this shape, accepted by the Chromium sandbox's service resolver (it recognises several x64 stub shapes, so this one is a choice, not a requirement; see provenance D07)
   (bytes `4C 8B D1 B8 <n> 0F 05 C3`, checked 2026-10-30 against
   `sandbox/win/src/service_resolver_64.cc`):
 
