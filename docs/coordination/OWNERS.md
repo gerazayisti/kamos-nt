@@ -3,7 +3,7 @@
 | Path | Owner |
 |---|---|
 | `README.md`, `CONTRIBUTING.md`, `LICENSE`, `docs/adr/`, `docs/rfc/`, `docs/roadmap.md`, `docs/coordination/`, `docs/architecture/overview.md`, `docs/architecture/lock-order.md`, `sdk/include/` | A01 ARCH |
-| `Makefile`, `cmake/`, `toolchain/`, `.devcontainer/`, `.github/workflows/`, `tools/image/`, `tools/qemu/`, `tools/debug/`, `tools/check-toolchain.sh` | A02 BUILD |
+| `Makefile`, `cmake/`, `toolchain/`, `.devcontainer/`, `.github/`, `tools/ci/`, `tools/image/`, `tools/qemu/`, `tools/debug/`, `tools/check-toolchain.sh`, `docs/development/` | A02 BUILD |
 | `boot/`, `arch/x86_64/{boot,cpu,interrupts}/`, `hal/` | A03 BOOT |
 | `ntoskrnl/rtl/` | A03 until the Wave 1 gate, then A05 |
 | `ntoskrnl/mm/`, `arch/x86_64/mm/` | A04 MM |
