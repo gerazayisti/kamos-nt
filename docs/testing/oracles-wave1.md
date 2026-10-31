@@ -96,6 +96,37 @@ conversion, and a lost-interrupt bug, but not crystal drift. It proves nothing a
 QEMU's serial port is instantaneous and will not show the lost ticks that a slow console can cause on
 a real machine (ADR-0009, RFC-0002 item 8); that risk stays untested.
 
-## 5. Timer noise measurement
+## 5. Timer noise measurement (measured 2026-10-31)
 
-See the section "Measured noise" appended below once the runs have been done.
+Method: `tests/framework/probes/timer-noise/` is a 512-byte real-mode boot sector (not a kernel). It
+programs PIT channel 0 at 100 Hz (divisor 11932), counts 1000 IRQ0 interrupts while idling in `hlt`,
+and prints `KTEST timer start` and `KTEST timer end` with the guest's nominal 0 and 10 s. The runner
+stamps the arrival of both lines with the host `CLOCK_MONOTONIC` and prints guest/host. QEMU 8.2.2,
+TCG, `-machine pc -nic none`, WSL2 with 2 cores, nothing else heavy running. The host clock itself
+was checked: a 10 s `sleep` gave `monotonic` 10.000342 s and `time()` 10.000343 s, and a Windows
+stopwatch around the call 10.53 s (0.26 s of which is process start).
+
+| Runs | CPU | min | max | mean |
+|---|---|---|---|---|
+| 20 | qemu64 | 0.993204 | 1.000039 | 0.999171 |
+| 10 | max | 0.992104 | 1.000056 | 0.999216 |
+
+Reading: 30 of 30 runs lie inside 0.99 to 1.01. The noise is **one-sided**: the guest never runs
+fast, and the host interval is occasionally longer by up to about 80 ms (worst ratio 0.9921),
+presumably because the end line reaches the runner late. The margin to the 1 % limit is small (0.79
+points used on the worst run), and a loaded host could push a correct kernel over it. The criterion
+stays at 1 %: it is not widened. If a correct kernel fails it, check the host load first; the runner
+prints both intervals so that this can be seen. The method has not been run against an A03 kernel
+because none exists, so this is the noise of the method, not a result for the kernel.
+
+**Finding: do not busy-poll the PIT.** The first version of the probe polled the latched PIT count in
+a tight loop and counted wraps. It gave ratios of 0.55 to 0.82 (20 runs, mean 0.75), and a version
+that summed count deltas instead of wraps (so it could not miss a wrap) gave 0.79 to 0.82 in 5 runs:
+under QEMU TCG the PIT time of a busy-polling guest advanced about 20 % slower than the host clock.
+The same PIT with an interrupt handler and `hlt` tracks the host clock. Consequences: (1) the O4 test
+waits in `hlt`, never in a polling loop; (2) the O8 spin that reads the PIT latch is bounded in guest
+PIT time and does not compare it with the host, so it is not affected; (3) A03's TSC calibration
+against the PIT (RFC-0002 item 8) is likely to be done by polling. If the TSC and the PIT follow the
+same virtual clock the calibration is self-consistent and O4 passes; if they do not, O4 will show an
+error of about 20 %. That is a design risk for A03 to know about, not a defect. I do not know why
+the polling guest lags; I did not investigate QEMU's clock code.
