@@ -7,7 +7,7 @@ Protocol and manifest syntax: docs/testing/oracles-wave1.md, section 1.
 
     ktest-run.py parse  LOG --exit N [--manifest FILE] [--stamped]
     ktest-run.py qemu   --iso ISO [--cpu qemu64] [--mem 512M] [--timeout 30]
-                        [--manifest FILE] [--log FILE] [--extra ARG ...]
+                        [--manifest FILE] [--log FILE] [--extra=ARG ...]
     ktest-run.py selftest FIXTURE_DIR
 
 Exit status: 0 verdict PASS, 1 verdict FAIL, 2 usage or I/O error.
@@ -217,10 +217,17 @@ def cmd_parse(a):
 
 def cmd_qemu(a):
     m = load_manifest(a.manifest)
-    cmd = ["qemu-system-x86_64", "-machine", "q35", "-cpu", a.cpu, "-m", a.mem,
-           "-cdrom", a.iso, "-display", "none", "-no-reboot", "-accel", "tcg",
+    cmd = ["qemu-system-x86_64", "-machine", a.machine, "-cpu", a.cpu, "-m", a.mem,
+           "-display", "none", "-no-reboot", "-accel", "tcg",
            "-serial", "stdio", "-monitor", "none",
            "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"] + (a.extra or [])
+    if a.disk:
+        cmd += ["-drive", "format=raw,file=" + a.disk]
+    elif a.iso:
+        cmd += ["-cdrom", a.iso]
+    else:
+        print("error: --iso or --disk is required", file=sys.stderr)
+        return 2
     print("+ " + " ".join(cmd))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.DEVNULL)
     fd = p.stdout.fileno()
@@ -263,7 +270,7 @@ def cmd_qemu(a):
     for _, t in recs:
         print("| " + t.rstrip("\r"))
     print("qemu exit code: %d%s" % (code, " (timeout)" if timed_out else ""))
-    return verdict(judge(recs, code, m), a.iso)
+    return verdict(judge(recs, code, m), a.iso or a.disk)
 
 
 def cmd_selftest(a):
@@ -316,13 +323,15 @@ def main(argv):
     p.add_argument("--stamped", action="store_true")
     p.set_defaults(fn=cmd_parse)
     q = sub.add_parser("qemu")
-    q.add_argument("--iso", required=True)
+    q.add_argument("--iso")
+    q.add_argument("--disk", help="raw disk image booted instead of an ISO (probes)")
     q.add_argument("--cpu", default="qemu64")
+    q.add_argument("--machine", default="q35")
     q.add_argument("--mem", default="512M")
     q.add_argument("--timeout", type=float, default=30)
     q.add_argument("--manifest")
     q.add_argument("--log")
-    q.add_argument("--extra", nargs="*")
+    q.add_argument("--extra", action="append", help="one extra QEMU argument, repeatable: --extra=-nic --extra=none")
     q.set_defaults(fn=cmd_qemu)
     s = sub.add_parser("selftest")
     s.add_argument("dir")
