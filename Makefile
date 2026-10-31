@@ -73,7 +73,10 @@ $(ISO): $(KERNEL) $(INITRD) boot/grub/grub.cfg
 	rm -rf $(BUILD)/iso && mkdir -p $(BUILD)/iso/boot/grub
 	cp $(KERNEL) $(INITRD) $(BUILD)/iso/boot/
 	cp boot/grub/grub.cfg $(BUILD)/iso/boot/grub/grub.cfg
-	grub-mkrescue -o $@ $(BUILD)/iso 2>$(BUILD)/grub-mkrescue.log || \
+	find $(BUILD)/iso -exec touch -h -d @$(SOURCE_DATE_EPOCH) {} +
+	grub-mkrescue -o $@ $(BUILD)/iso --modification-date=$$(date -u -d @$(SOURCE_DATE_EPOCH) +%Y%m%d%H%M%S00) \
+	  -- -iso_nowtime =$(SOURCE_DATE_EPOCH) -alter_date_r b =$(SOURCE_DATE_EPOCH) / -- \
+	  2>$(BUILD)/grub-mkrescue.log || \
 	  { cat $(BUILD)/grub-mkrescue.log; exit 1; }
 	@echo "iso: $@"
 

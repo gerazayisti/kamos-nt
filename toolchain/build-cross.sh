@@ -41,15 +41,19 @@ fi
 
 export PATH="$prefix/bin:$PATH"
 
-rm -rf build-binutils && mkdir build-binutils && cd build-binutils
-"../binutils-$binutils_v/configure" --target=$target --prefix="$prefix" \
-    --with-sysroot --disable-nls --disable-werror
-make -j"$jobs"
-make install
-cd ..
+# Resumable: a finished binutils install is kept, and a configured build-gcc is reused (set KAMOS_CLEAN=1 to rebuild).
+[ "${KAMOS_CLEAN:-0}" = 1 ] && rm -rf build-binutils build-gcc
+if [ ! -x "$prefix/bin/$target-ld" ]; then
+    rm -rf build-binutils && mkdir build-binutils && cd build-binutils
+    "../binutils-$binutils_v/configure" --target=$target --prefix="$prefix" \
+        --with-sysroot --disable-nls --disable-werror
+    make -j"$jobs"
+    make install
+    cd ..
+fi
 
-rm -rf build-gcc && mkdir build-gcc && cd build-gcc
-"../gcc-$gcc_v/configure" --target=$target --prefix="$prefix" \
+mkdir -p build-gcc && cd build-gcc
+[ -f Makefile ] || "../gcc-$gcc_v/configure" --target=$target --prefix="$prefix" \
     --disable-nls --enable-languages=c --without-headers --disable-hosted-libstdcxx
 make -j"$jobs" all-gcc all-target-libgcc
 make install-gcc install-target-libgcc
