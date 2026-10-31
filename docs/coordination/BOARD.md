@@ -37,9 +37,6 @@ Each agent updates only its own rows. Blocked work stays blocked here; nobody wo
 | W1-08 | Oracles for the Phase 1 and 2 criteria (timer, exceptions, level masking) | A10 | Done (document): `docs/testing/oracles-wave1.md`; timer method noise measured | | `docs/testing/oracles-wave1.md` |
 | W1-09 | Phase 1: boot, console, boot information | A03 | Done on the branch `agent/a03/p1-boot`, not merged, not verified by A10 | A10 replay | `docs/reports/p2-A03.md` |
 | W1-10 | Phase 2: GDT, IDT, exceptions, PIC, PIT, software levels | A03 | Done on the branch `agent/a03/p1-boot`, not merged, not verified by A10 | A10 replay | `docs/reports/p2-A03.md` |
-| W1-11 | Host-side frame allocator, page tables, pool | A04 | Assigned | W1-03 accepted, W1-07 | |
-| W1-09 | Phase 1: boot, console, boot information | A03 | Assigned | W1-01 accepted, W1-06 | |
-| W1-10 | Phase 2: GDT, IDT, exceptions, PIC, PIT, software levels | A03 | Assigned | W1-09 | |
 | W1-11 | Host-side frame allocator, page tables, pool | A04 | Done on host (`Tested (host)`), awaiting A01 review; code was written before A01 accepted the note (W1-03), see its section 8 | W1-03 accepted, W1-07 | `docs/architecture/memory.md`, `docs/status/mm.md`, `docs/reports/p3-host-A04.md`, evidence 2026-10-31 (A04 rows) |
 | W1-12 | Split the cache key: host tool versions out of `versions.txt` (C1) | A02 | Done, merged. Note: `check-toolchain.sh` reads `gcc=` from `versions.txt`, which stays there | | `toolchain/host-tools.txt` |
 | W1-13 | `ASSERT` per build profile (D10): debug-only `ASSERT`, `VERIFY`, security checks never removed | A01 (header), A02 (`KAMOS_DEBUG` switch) | Header done 2026-10-31; `KAMOS_DEBUG` switch pending (A02, task R) | | `sdk/include/kamos/bugcheck.h` |
