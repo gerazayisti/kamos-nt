@@ -112,6 +112,19 @@ static unsigned RunTables(const KTX_TABLE *Tables, size_t TableCount)
             } else {
                 kt__st.pass++;
             }
+            if (kt__st.cur_failed && KtNote[0] != '\0') {
+                /* A failing test keeps its notes: the timer test must report its spans (key=value)
+                 * on failure too, so that a failed run can be diagnosed from the log. */
+                char    both[200];
+                kt__buf bb = {both, sizeof both, 0};
+
+                both[0] = '\0';
+                kt__cat(&bb, kt__st.detail);
+                kt__cat(&bb, " | ");
+                kt__cat(&bb, KtNote);
+                KtPrintLine(c->Suite, c->Name, res, both);
+                continue;
+            }
             KtPrintLine(c->Suite, c->Name, res,
                         (kt__st.cur_failed || kt__st.cur_skipped) ? kt__st.detail : KtNote);
         }
@@ -158,6 +171,7 @@ static const struct {
     {"pf-nofixup", KtScenarioPfNoFixup},
     {"pf-offbyone", KtScenarioPfOffByOne},
     {"pf-device", KtScenarioPfDevice},
+    {"fixup-nonpf", KtScenarioFixupNonPf},
     {"df", KtScenarioDoubleFault},
     {"irql-raise-down", KtScenarioRaiseDown},
     {"irql-lower-up", KtScenarioLowerUp},

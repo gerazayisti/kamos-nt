@@ -19,8 +19,9 @@ typedef struct _LINE {
     void                 *Context;
 } LINE;
 
-static LINE  Lines[16];
-static ULONG SpuriousCount[16];
+static LINE      Lines[16];
+static ULONG     SpuriousCount[16];
+volatile BOOLEAN HalpTestHoldTimerEoi;
 
 static void IoWait(void)
 {
@@ -121,6 +122,10 @@ void HalpIrqDispatch(KTRAP_FRAME *Tf, KIRQL InterruptedIrql)
     }
     if (Lines[line].Handler != NULL) {
         (void)Lines[line].Handler(Lines[line].Context);
+    }
+    if (line == 0 && HalpTestHoldTimerEoi) {
+        HalpTestHoldTimerEoi = false;
+        return; /* test only: IRQ 0 stays in service until the test sends the EOI itself */
     }
     EndOfInterrupt(line);
 }

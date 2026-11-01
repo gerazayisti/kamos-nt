@@ -120,6 +120,8 @@ void KiExceptionDispatch(KTRAP_FRAME *Tf, KIRQL Interrupted)
     KiLastException.HasErrorCode    = hasErr;
     KiLastException.Resumed         = (fix != NULL);
     KiLastException.InterruptedIrql = Interrupted;
+    KiLastException.HandlerIrql     = KeGetCurrentIrql();
+    KiLastException.HandlerIf       = (ArchReadRflags() & ARCH_RFLAGS_IF) != 0;
     KiLastException.ErrorCode       = hasErr ? Tf->ErrorCode : 0;
     KiLastException.Rip             = Tf->Rip;
     KiLastException.Cs              = Tf->Cs;

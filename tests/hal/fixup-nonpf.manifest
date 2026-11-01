@@ -1,0 +1,7 @@
+# ADR-0013 rule: a fixup applies to a page fault only. A FIXUP-class entry whose address matches a
+# #DE at PASSIVE_LEVEL must not be used: bug check, exit 37, in every profile (A10 mutation M10).
+exit 37
+line ^EXC v=0 err=none rip=0x[0-9a-f]{16} cs=0x8 rflags=0x[0-9a-f]+ rsp=0x[0-9a-f]{16} irql=0 name=DE action=stop$
+line ^KAMOS STOP 0x00000002 UNHANDLED_EXCEPTION P1=0x0 P2=0x[0-9a-f]+ P3=0x0 P4=0x0$
+forbid action=resume
+forbid fell_through

@@ -124,9 +124,20 @@ static volatile ULONG   DispatchRequeue;
 static volatile ULONG64 DispatchFrames[8];
 static volatile ULONG   DispatchWaitTick;
 
+/*
+ * Nesting observed by the handler itself, independent of the HAL's own SoftMaxDepth counter: a
+ * handler that is entered while another run of it has not returned raises HandlerActive above 1.
+ */
+static volatile ULONG HandlerActive;
+static volatile ULONG HandlerMaxActive;
+
 static void CountingHandler(void)
 {
     ULONG n = DispatchRuns++;
+
+    if (++HandlerActive > HandlerMaxActive) {
+        HandlerMaxActive = HandlerActive;
+    }
 
     if (n < 8) {
         DispatchFrames[n] = (ULONG64)(uintptr_t)__builtin_frame_address(0);
@@ -147,6 +158,7 @@ static void CountingHandler(void)
         DispatchRequeue--;
         HalRequestDispatchInterrupt(); /* sets the bit; must not nest */
     }
+    HandlerActive--;
 }
 
 static void DispatchWaitsForLowering(void)
@@ -224,6 +236,7 @@ static void DispatchDepthIsOne(void)
 
     HalSetDispatchInterruptHandler(CountingHandler);
     cpu->SoftMaxDepth = 0;
+    HandlerMaxActive  = 0;
     DispatchRequeue   = 2; /* the handler requeues itself twice ... */
     DispatchWaitTick =
         1; /* ... and a timer tick arrives during the first run (the tick also requests) */
@@ -232,7 +245,8 @@ static void DispatchDepthIsOne(void)
     HalRequestDispatchInterrupt();
     KTX_CHECK(DispatchRuns >= before + 3); /* the original plus two requeues, looped not nested */
     KTX_CHECK(HalpTickCount() > ticks0);   /* the tick really came during the handler */
-    KTX_CHECK_EQ(cpu->SoftMaxDepth, 1);    /* never re-entered */
+    KTX_CHECK_EQ(cpu->SoftMaxDepth, 1);    /* never re-entered (the HAL's own counter) */
+    KTX_CHECK_EQ(HandlerMaxActive, 1);     /* and as seen by the handler: never two live at once */
     for (ULONG i = before; i + 1 < DispatchRuns && i + 1 < 8; i++) {
         /*
          * Every run is on the current stack, a short distance below this frame. (Not "the same
@@ -244,6 +258,7 @@ static void DispatchDepthIsOne(void)
     }
     KTX_CHECK_EQ(KeGetCurrentIrql(), PASSIVE_LEVEL);
     KtNoteU64("runs", DispatchRuns - before);
+    KtNoteU64("handler_max_active", HandlerMaxActive);
     HalSetDispatchInterruptHandler(NULL);
 }
 
@@ -278,6 +293,34 @@ static void PicSpurious7(void)
     KTX_CHECK_EQ(HalpPicReadRegister(true), isr0); /* no EOI wrongly clearing another line */
     KTX_CHECK_EQ(KeGetCurrentIrql(), PASSIVE_LEVEL);
     KTX_CHECK_EQ(FlagIf(), ARCH_RFLAGS_IF);
+}
+
+/*
+ * M16: with IRQ 0 in service, a spurious IRQ 7 must not get an EOI. A non-specific EOI would clear
+ * the highest ISR bit, which is IRQ 0's. The seam withholds the EOI of the next timer tick so the
+ * ISR bit is set when the spurious interrupt arrives; the test sends that EOI itself afterwards.
+ */
+static void PicSpuriousKeepsLineInService(void)
+{
+    ULONG   c0 = HalpPicSpuriousCount(7);
+    ULONG64 t0 = HalpTickCount();
+    USHORT  isrHeld;
+    USHORT  isrAfter;
+
+    HalpTestHoldTimerEoi = true;
+    __asm__ volatile("cli" : : : "memory");
+    while (HalpTickCount() == t0) {
+        __asm__ volatile("sti; hlt; cli" : : : "memory");
+    }
+    isrHeld = HalpPicReadRegister(true); /* IF is clear here: no tick can intervene */
+    __asm__ volatile("int $0x27");
+    isrAfter = HalpPicReadRegister(true);
+    HalWritePortUchar(0x20, 0x20); /* the withheld EOI */
+    __asm__ volatile("sti" : : : "memory");
+    KTX_REQUIRE((isrHeld & 1) != 0); /* IRQ 0 really was in service */
+    KTX_CHECK_EQ(HalpPicSpuriousCount(7), c0 + 1);
+    KTX_CHECK_EQ(isrAfter, isrHeld); /* the spurious interrupt did not clear IRQ 0 */
+    KtNoteHex("isr", isrHeld);
 }
 
 static void PicSpurious15(void)
@@ -375,6 +418,7 @@ static void TimerEnd(void)
 
 const KTX_CASE KtIrqlCases[] = {
     {"pic", "spurious7", PicSpurious7},
+    {"pic", "spurious7_irq0_in_service", PicSpuriousKeepsLineInService},
     {"pic", "spurious15", PicSpurious15},
     {"pic", "connect_errors", PicConnectErrors},
     {"irql", "if_per_level", IrqlInterruptFlagPerLevel},

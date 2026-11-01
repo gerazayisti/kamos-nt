@@ -276,6 +276,9 @@ static void PolicyHandlerLevelIsDeviceAndFrameOnBootStack(void)
     KTX_CHECK_EQ(KiLastException.Count, before + 1);
     KTX_CHECK_EQ(KiLastException.InterruptedIrql, PASSIVE_LEVEL);
     KTX_CHECK((KiLastException.Rflags & ARCH_RFLAGS_IF) != 0);
+    /* R-a, observed inside the handler (the record is filled by the handler itself): */
+    KTX_CHECK_EQ(KiLastException.HandlerIrql, DEVICE_LEVEL);
+    KTX_CHECK_EQ(KiLastException.HandlerIf, 0);
 }
 
 const KTX_CASE KtExcCases[] = {
@@ -323,6 +326,16 @@ void KtScenarioPfDevice(void)
     (void)KiTestFixupRegister(A(KtReadFault), A(KtReadResume), KI_FIXUP_CLASS_FIXUP);
     KeRaiseIrql(DEVICE_LEVEL, &old);
     KtDoRead(UNMAPPED_HIGH + 0x38);
+}
+
+void KtScenarioFixupNonPf(void)
+{
+    kprintf("scenario fixup-nonpf: exact fixup registered for a #DE, at PASSIVE_LEVEL\n");
+    KiTestFixupClear();
+    /* The same pair as an EXPECT entry would resume; as a FIXUP entry it applies to #PF only. */
+    (void)KiTestFixupRegister(A(KtDeFault), A(KtDeResume), KI_FIXUP_CLASS_FIXUP);
+    KtDoDe();
+    KtScenarioFellThrough("fixup-nonpf");
 }
 
 void KtScenarioDoubleFault(void)
