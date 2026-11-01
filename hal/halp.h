@@ -175,6 +175,8 @@ typedef struct _KI_EXCEPTION_RECORD {
     BOOLEAN HasErrorCode;
     BOOLEAN Resumed;
     KIRQL   InterruptedIrql;
+    KIRQL HandlerIrql; /* KeGetCurrentIrql() read inside the handler: must be DEVICE_LEVEL (R-a) */
+    BOOLEAN HandlerIf; /* RFLAGS.IF read inside the handler: must be clear */
     ULONG64 ErrorCode;
     ULONG64 Rip, Cs, Rflags, Rsp, Cr2;
     ULONG64 FrameAddress; /* address of the trap frame: shows which stack the handler ran on */
@@ -234,7 +236,10 @@ void HalpDeliverSoftwareInterrupts(void);
 void   HalpInitPic(void);
 USHORT HalpPicReadRegister(BOOLEAN Isr); /* OCW3 read: ISR if true, else IRR; master low byte */
 ULONG  HalpPicSpuriousCount(ULONG Line);
-void   HalpInitTimer(void); /* programs the PIT, calibrates the TSC, returns with IF set */
+/* Test seam: when set, the next IRQ 0 is handled but its EOI is withheld, leaving IRQ 0 in service.
+ */
+extern volatile BOOLEAN HalpTestHoldTimerEoi;
+void           HalpInitTimer(void); /* programs the PIT, calibrates the TSC, returns with IF set */
 extern ULONG64 HalpLostTicks;
 extern ULONG64 HalpRateUpdates;            /* once-a-second re-measurements applied */
 extern ULONG64 HalpTscHzMin, HalpTscHzMax; /* extremes of every measurement */

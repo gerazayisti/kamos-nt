@@ -76,6 +76,7 @@ void KtScenarioFellThrough(const char *Name);
 void KtScenarioPfNoFixup(void);
 void KtScenarioPfOffByOne(void);
 void KtScenarioPfDevice(void);
+void KtScenarioFixupNonPf(void);
 void KtScenarioDoubleFault(void);
 void KtScenarioRaiseDown(void);
 void KtScenarioLowerUp(void);

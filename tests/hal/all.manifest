@@ -50,6 +50,7 @@ require pfpolicy handler_frame
 
 # PIC, O8, R-b
 require pic spurious7
+require pic spurious7_irq0_in_service
 require pic spurious15
 require pic connect_errors
 require irql if_per_level
@@ -67,4 +68,8 @@ require timer calibration
 require timer monotonic
 require timer start
 require timer end
-ratio timer start end t100ns 1e-7 0.99 1.01
+# Band 0.98 to 1.02 under QEMU TCG (A01 decision C1 at the Wave 1 gate: A10 measured 0.9918 to 1.0105
+# over 20 runs, host noise on line arrival is the limit). The 1 % band (0.99 to 1.01) stays the
+# target for KVM and real hardware (milestone M-HW). The timer test prints t100ns/tsc_span/tick_span
+# on FAIL too, so a failed run always has the spans.
+ratio timer start end t100ns 1e-7 0.98 1.02
