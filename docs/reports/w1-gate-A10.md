@@ -132,3 +132,54 @@ behaviour that I observed. Conditions before the gate file is signed as "approve
 - C3. A01 marks rows 27, 28, 33 as "CI only" in the gate file; I cannot see them.
 
 Not a "no-go": none of the survivors is a bug I could show; each is the absence of a test.
+
+## 8. Second pass (2026-11-01, tree a5aeda9)
+
+Scratch copy of a5aeda9, one mutation at a time, `make KAMOS_DEBUG=1 iso`, `tests/hal/run-scenarios.sh debug qemu64`,
+one QEMU at a time. Control (no mutation): `all` rc 0 (ratio 0.998566), `fixup-nonpf` rc 0.
+
+| Mutation | Result | Failing line |
+|---|---|---|
+| M03 handler does not raise to DEVICE_LEVEL | KILLED, rc 1 | `KTEST pfpolicy handler_frame FAIL test_exc.c:280 KiLastException.HandlerIrql == DEVICE_LEVEL (0x0 vs 0xc)` |
+| M10 fixup used for any vector | KILLED, rc 1 (scenario `fixup-nonpf`) | `forbidden line /fell_through/` and no `KAMOS STOP ... UNHANDLED_EXCEPTION P1=0x0` line; suite `all` alone stays green, the scenario is what catches it |
+| M16 EOI sent for spurious IRQ 7 | KILLED, rc 1 | `KTEST pic spurious7_irq0_in_service FAIL test_irql.c:322 isrAfter == isrHeld (0x0 vs 0x1)` |
+| M11 nesting allowed, `SoftMaxDepth` removed (reads 0) | KILLED, rc 1 | `depth_is_one FAIL test_irql.c:248` (counter reads 0, so this one proves nothing about the new oracle) |
+| M11c nesting allowed, `SoftMaxDepth` pinned to 1 | KILLED, rc 1 | `KTEST dispatch depth_is_one FAIL test_irql.c:249 HandlerMaxActive == 1 (0x4 vs 0x1)`, `handler_max_active=4`; also `held_at_device`, `held_until_lowered` |
+| M15 multiplier 2 % high (new band) | KILLED, rc 1 | `ratio 1.025188 (allowed 0.98..1.02)` |
+| M15b multiplier 3 % high | KILLED, rc 1 | `ratio 1.021115`: barely, the periodic re-measurement corrects part of the error |
+
+Release check: `make KAMOS_DEBUG=0 iso` then `run-scenarios.sh release max`: `run-scenarios (release, max): PASS`, ratio 0.999941.
+Not rerun: M01, M02, M04 to M09, M12 to M14, M17, M18, M20 (their tests are unchanged in this diff).
+
+Limit of the new band: an error of about 1.5 % or less in the calibration now passes O4 (M15b shows even 3 % is only just caught).
+
+### Test seam `HalpTestHoldTimerEoi` (hal/pic.c:24, 126; halp.h:241)
+
+Facts: a global `volatile BOOLEAN`, compiled in both profiles (`nm build/release/kernel.elf` shows
+`ffffffff801242e0 B HalpTestHoldTimerEoi`). The only writer in the tree is `hal/ktest/test_irql.c:310`. When set, the
+next IRQ 0 returns without EOI and the flag clears itself. It is declared in `halp.h` (HAL private), not in `sdk/`.
+
+Risk view:
+- Not reachable from outside the kernel: there is no system call yet (Phase 6) and user mode cannot write kernel memory
+  (ADR-0005). Reaching it needs an arbitrary kernel write, which is already a full compromise, so the seam adds no
+  new privilege.
+- If it were set, effect: the PIC keeps IRQ 0 in service and masks IRQ 0 and lower-priority lines until an EOI; the
+  system stops getting timer ticks. A denial of service, no disclosure and no code execution.
+- The real cost is hygiene: a test-only flag sits in the production data path (an extra branch in every IRQ 0), and the
+  release kernel carries the whole `hal/ktest` suite anyway.
+- Recommendation: keep it for now because the release profile is also the test kernel (the `release max` cell runs this
+  test). Guard it with a dedicated `KAMOS_KTEST` define rather than `KAMOS_DEBUG`: `KAMOS_DEBUG` would drop the test
+  from the release cells, and an undeclared SKIP is a failure in the parser. When a production profile without ktest
+  exists, the seam, its branch and the `HalpTestHoldTimerEoi` symbol must be absent from it; oracle O10 gets a check
+  with `nm` for that symbol. No defect opened: Low, no production profile yet.
+
+## 9. Signature
+
+Conditions of the first pass: C1 (timer band) decided in RFC-0002 addendum 3; C2 (tests for M03, M10, M16, independent
+depth) met and shown red above; C3 (rows 27, 28, 33 as "CI only") written in `docs/reports/gate-wave1.md`. A01's item 5
+(`ObDuplicateHandle` rule) is written in `ob.h:82` and I confirm it: subset of the source access, otherwise
+`STATUS_ACCESS_DENIED`.
+
+**A10 signs: approved**, for Wave 1 as scoped in `docs/reports/gate-wave1.md` (QEMU TCG and host only; the rows marked
+design or not tested stay unclaimed). Not blocking, carried to Wave 2: the `KAMOS_KTEST` guard for the seam, the 1 %
+timer criterion on KVM or hardware, the memory manager not linked to a booting kernel, an unbounded self-requeuing DPC.
